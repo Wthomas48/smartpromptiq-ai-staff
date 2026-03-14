@@ -3,11 +3,13 @@ FROM node:20-alpine AS server-builder
 
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json* ./
-RUN npm ci
+RUN npm ci --ignore-scripts
+
+COPY server/prisma ./prisma
+RUN npx prisma generate
 
 COPY server/ ./
-RUN npx prisma generate
-RUN npm run build
+RUN npx tsc
 
 # ─── Stage 2: Build Client ────────────────────────────────────────
 FROM node:20-alpine AS client-builder
@@ -17,6 +19,8 @@ COPY client/package.json client/package-lock.json* ./
 RUN npm ci
 
 COPY client/ ./
+# Remove any stale build artifacts
+RUN rm -f tsconfig.tsbuildinfo
 RUN npm run build
 
 # ─── Stage 3: Production Runtime ──────────────────────────────────
@@ -27,12 +31,14 @@ WORKDIR /app
 # Install production server dependencies only
 COPY server/package.json server/package-lock.json* ./server/
 WORKDIR /app/server
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
+
+# Copy Prisma schema + generate client in production
+COPY server/prisma ./prisma
+RUN npx prisma generate
 
 # Copy built server
 COPY --from=server-builder /app/server/dist ./dist
-COPY --from=server-builder /app/server/node_modules/.prisma ./node_modules/.prisma
-COPY server/prisma ./prisma
 
 # Copy built client (served as static files)
 COPY --from=client-builder /app/client/dist /app/client/dist
