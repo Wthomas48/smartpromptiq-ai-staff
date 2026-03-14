@@ -1,0 +1,318 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { User, CreditCard, Building2, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { apiGet, apiPost } from "@/lib/api";
+
+interface Subscription {
+  id: number;
+  planId: number;
+  planName: string;
+  status: string;
+  price: number;
+  interval: string;
+  currentPeriodEnd?: string;
+}
+
+interface Plan {
+  id: number;
+  name: string;
+  price: number;
+  interval: string;
+  features: string[];
+  maxAiStaff: number;
+  maxWorkflows: number;
+}
+
+const defaultPlans: Plan[] = [
+  {
+    id: 1,
+    name: "Starter",
+    price: 29,
+    interval: "month",
+    features: [
+      "Up to 3 AI Staff",
+      "5 Workflows",
+      "1,000 messages/month",
+      "Email support",
+    ],
+    maxAiStaff: 3,
+    maxWorkflows: 5,
+  },
+  {
+    id: 2,
+    name: "Pro",
+    price: 79,
+    interval: "month",
+    features: [
+      "Up to 10 AI Staff",
+      "Unlimited Workflows",
+      "10,000 messages/month",
+      "Priority support",
+      "Custom integrations",
+    ],
+    maxAiStaff: 10,
+    maxWorkflows: -1,
+  },
+  {
+    id: 3,
+    name: "Agency",
+    price: 199,
+    interval: "month",
+    features: [
+      "Unlimited AI Staff",
+      "Unlimited Workflows",
+      "Unlimited messages",
+      "24/7 support",
+      "Custom integrations",
+      "White-label option",
+      "API access",
+    ],
+    maxAiStaff: -1,
+    maxWorkflows: -1,
+  },
+];
+
+export default function SettingsPage() {
+  const { user } = useAuth();
+  const { currentWorkspace } = useWorkspace();
+  const wsId = currentWorkspace?.id;
+  const queryClient = useQueryClient();
+
+  const { data: subscription, isLoading: subLoading } = useQuery({
+    queryKey: ["subscription", wsId],
+    queryFn: () =>
+      apiGet<Subscription>(`/api/workspaces/${wsId}/billing/subscription`),
+    enabled: !!wsId,
+  });
+
+  const { data: plans } = useQuery({
+    queryKey: ["plans", wsId],
+    queryFn: () => apiGet<Plan[]>(`/api/workspaces/${wsId}/billing/plans`),
+    enabled: !!wsId,
+  });
+
+  const subscribeMutation = useMutation({
+    mutationFn: (planId: number) =>
+      apiPost(`/api/workspaces/${wsId}/billing/subscribe`, { planId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription", wsId] });
+    },
+  });
+
+  const availablePlans =
+    Array.isArray(plans) && plans.length > 0 ? plans : defaultPlans;
+
+  const currentPlanId = subscription?.planId;
+
+  return (
+    <div className="max-w-4xl space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage your account and workspace settings
+        </p>
+      </div>
+
+      {/* Profile Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">Profile</CardTitle>
+          </div>
+          <CardDescription>Your personal account information</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Full Name</p>
+              <p className="text-sm text-foreground font-medium">
+                {user?.name || "---"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Email</p>
+              <p className="text-sm text-foreground font-medium">
+                {user?.email || "---"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Role</p>
+              <Badge variant="secondary">{user?.role || "USER"}</Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Workspace Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">Workspace</CardTitle>
+          </div>
+          <CardDescription>
+            Current workspace configuration
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">
+                Workspace Name
+              </p>
+              <p className="text-sm text-foreground font-medium">
+                {currentWorkspace?.name || "No workspace selected"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">
+                Workspace ID
+              </p>
+              <p className="text-sm text-foreground font-mono">
+                {currentWorkspace?.id || "---"}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Billing Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">Billing & Plans</CardTitle>
+          </div>
+          <CardDescription>
+            Manage your subscription and billing
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Current plan */}
+          {subLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          ) : subscription ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Current Plan: {subscription.planName}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ${subscription.price}/{subscription.interval}
+                    {subscription.currentPeriodEnd &&
+                      ` | Renews ${new Date(
+                        subscription.currentPeriodEnd
+                      ).toLocaleDateString()}`}
+                  </p>
+                </div>
+                <Badge
+                  variant={
+                    subscription.status === "ACTIVE"
+                      ? "default"
+                      : "secondary"
+                  }
+                >
+                  {subscription.status}
+                </Badge>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border bg-secondary/50 p-4">
+              <p className="text-sm text-muted-foreground">
+                No active subscription. Choose a plan below to get started.
+              </p>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Plans grid */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-4">
+              Available Plans
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {availablePlans.map((plan) => {
+                const isCurrent = currentPlanId === plan.id;
+                return (
+                  <div
+                    key={plan.id}
+                    className={`rounded-xl border p-5 transition-colors ${
+                      isCurrent
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/30"
+                    }`}
+                  >
+                    <h4 className="text-base font-bold text-foreground">
+                      {plan.name}
+                    </h4>
+                    <div className="mt-2 mb-4">
+                      <span className="text-2xl font-bold text-foreground">
+                        ${plan.price}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        /{plan.interval}
+                      </span>
+                    </div>
+                    <ul className="space-y-2 mb-5">
+                      {plan.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2 text-xs text-muted-foreground"
+                        >
+                          <Check className="h-3.5 w-3.5 text-primary flex-shrink-0 mt-0.5" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                    {isCurrent ? (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        disabled
+                      >
+                        Current Plan
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full"
+                        variant={
+                          plan.name === "Pro" ? "default" : "outline"
+                        }
+                        onClick={() => subscribeMutation.mutate(plan.id)}
+                        disabled={subscribeMutation.isPending}
+                      >
+                        {subscribeMutation.isPending
+                          ? "Processing..."
+                          : "Subscribe"}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {subscribeMutation.isError && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+              {subscribeMutation.error instanceof Error
+                ? subscribeMutation.error.message
+                : "Failed to subscribe"}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
