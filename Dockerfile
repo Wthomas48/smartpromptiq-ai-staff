@@ -33,9 +33,11 @@ COPY server/package.json server/package-lock.json* ./server/
 WORKDIR /app/server
 RUN npm ci --omit=dev --ignore-scripts
 
-# Copy Prisma schema + generate client in production
+# Copy Prisma schema + generated client from build stage (includes prisma CLI)
 COPY server/prisma ./prisma
-RUN npx prisma generate
+COPY --from=server-builder /app/server/node_modules/.prisma ./node_modules/.prisma
+COPY --from=server-builder /app/server/node_modules/@prisma ./node_modules/@prisma
+COPY --from=server-builder /app/server/node_modules/prisma ./node_modules/prisma
 
 # Copy built server
 COPY --from=server-builder /app/server/dist ./dist
@@ -56,4 +58,4 @@ ENV UPLOAD_DIR=/app/uploads
 EXPOSE 3001
 
 # Run database migrations then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migration warning: continuing anyway'; node dist/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migration warning: continuing anyway'; exec node dist/index.js"]
