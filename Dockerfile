@@ -56,4 +56,4 @@ ENV UPLOAD_DIR=/app/uploads
 EXPOSE 3001
 
 # Run database migrations then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migration warning: continuing anyway'; node dist/index.js"]

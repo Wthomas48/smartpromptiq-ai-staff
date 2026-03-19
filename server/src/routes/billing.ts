@@ -7,15 +7,24 @@ import { authenticateToken } from "../middleware/auth.js";
 
 // ─── Stripe & Prisma Initialization ────────────────────────────────────────
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
+let stripeInstance: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error("STRIPE_SECRET_KEY is not configured");
+    }
+    stripeInstance = new Stripe(key, {
+      apiVersion: "2026-02-25.clover",
+    });
+  }
+  return stripeInstance;
+}
 
 const router = Router({ mergeParams: true });
 const webhookRouter = Router();
 const prisma = new PrismaClient();
-
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
 
 // ─── Validation Schemas ─────────────────────────────────────────────────────
 
@@ -57,7 +66,7 @@ async function resolveStripePriceId(plan: {
   }
 
   // Fallback: search Stripe for a product whose name matches the plan name
-  const products = await stripe.products.search({
+  const products = await getStripe().products.search({
     query: `name~"${plan.name}"`,
     limit: 1,
   });
@@ -69,7 +78,7 @@ async function resolveStripePriceId(plan: {
     );
   }
 
-  const prices = await stripe.prices.list({
+  const prices = await getStripe().prices.list({
     product: products.data[0].id,
     active: true,
     limit: 1,
@@ -103,7 +112,7 @@ async function getOrCreateStripeCustomer(
     where: { id: workspaceId },
   });
 
-  const customer = await stripe.customers.create({
+  const customer = await getStripe().customers.create({
     name: workspace.name,
     email: email ?? undefined,
     metadata: { workspaceId },
@@ -194,7 +203,7 @@ router.post("/subscribe", async (req: Request, res: Response) => {
     const stripeCustomerId = await getOrCreateStripeCustomer(workspaceId);
 
     // Create a Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: stripeCustomerId,
       mode: "subscription",
       line_items: [{ price: stripePriceId, quantity: 1 }],
@@ -247,7 +256,7 @@ router.put("/subscription", async (req: Request, res: Response) => {
 
     // If cancelling, also cancel on Stripe
     if (status === "CANCELLED" && existing.stripeSubscriptionId) {
-      await stripe.subscriptions.update(existing.stripeSubscriptionId, {
+      await getStripe().subscriptions.update(existing.stripeSubscriptionId, {
         cancel_at_period_end: true,
       });
     }
@@ -279,7 +288,12 @@ webhookRouter.post(
 
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(req.body as Buffer, sig, WEBHOOK_SECRET);
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        res.status(500).json({ error: "Stripe webhook secret not configured" });
+        return;
+      }
+      event = getStripe().webhooks.constructEvent(req.body as Buffer, sig, webhookSecret);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       console.error("Webhook signature verification failed:", message);
@@ -314,7 +328,7 @@ webhookRouter.post(
           // Fetch the Stripe subscription to get current_period_end
           let renewsAt: Date | null = null;
           if (stripeSubscriptionId) {
-            const stripeSub = await stripe.subscriptions.retrieve(
+            const stripeSub = await getStripe().subscriptions.retrieve(
               stripeSubscriptionId
             );
             const periodEnd = (stripeSub as unknown as { current_period_end: number }).current_period_end;

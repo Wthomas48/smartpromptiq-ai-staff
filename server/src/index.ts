@@ -109,7 +109,7 @@ app.use(
 
 // ─── Start Server ───────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`SmartPromptIQ AI Staff server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
 });
