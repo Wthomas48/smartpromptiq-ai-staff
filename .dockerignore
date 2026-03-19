@@ -4,6 +4,7 @@ client/node_modules
 server/dist
 client/dist
 .git
-.env
+**/.env
+**/.env.*
 *.log
 uploads/
