@@ -52,10 +52,8 @@ WORKDIR /app/server
 
 # Environment defaults
 ENV NODE_ENV=production
-ENV PORT=3001
 ENV UPLOAD_DIR=/app/uploads
 
-EXPOSE 3001
-
-# Start the server directly — run migrations separately or on first deploy via Railway CLI
+# Railway injects PORT at runtime — do not hardcode it
+# Start the server directly — run migrations via Railway CLI: railway run npx prisma db push
 CMD ["node", "dist/index.js"]
