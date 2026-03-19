@@ -57,5 +57,5 @@ ENV UPLOAD_DIR=/app/uploads
 
 EXPOSE 3001
 
-# Run database migrations then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy || echo 'Migration warning: continuing anyway'; exec node dist/index.js"]
+# Start the server directly — run migrations separately or on first deploy via Railway CLI
+CMD ["node", "dist/index.js"]

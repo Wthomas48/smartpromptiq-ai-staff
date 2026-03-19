@@ -1,6 +1,11 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+console.log("Starting SmartPromptIQ server...");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("PORT:", process.env.PORT);
+console.log("DATABASE_URL set:", !!process.env.DATABASE_URL);
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
