@@ -57,6 +57,5 @@ WORKDIR /app/server
 ENV NODE_ENV=production
 ENV UPLOAD_DIR=/app/uploads
 
-# Railway injects PORT at runtime — do not hardcode it
-# Start the server directly — run migrations via Railway CLI: railway run npx prisma db push
-CMD ["node", "dist/index.js"]
+# Push schema to DB then start server
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/index.js"]
