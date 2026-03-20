@@ -16,6 +16,7 @@ router.get("/overview", async (req: Request, res: Response) => {
     const [
       totalStaff,
       activeStaff,
+      totalManagers,
       totalWorkflows,
       activeWorkflows,
       totalTasks,
@@ -24,9 +25,14 @@ router.get("/overview", async (req: Request, res: Response) => {
       pendingApprovals,
       totalThreads,
       totalMessages,
+      totalDelegations,
+      completedDelegations,
+      activeDelegations,
+      failedDelegations,
     ] = await Promise.all([
       prisma.aIStaff.count({ where: { workspaceId } }),
       prisma.aIStaff.count({ where: { workspaceId, status: "ACTIVE" } }),
+      prisma.aIStaff.count({ where: { workspaceId, isManager: true } }),
       prisma.workflow.count({ where: { workspaceId } }),
       prisma.workflow.count({ where: { workspaceId, status: "ACTIVE" } }),
       prisma.task.count({ where: { workspaceId } }),
@@ -37,10 +43,14 @@ router.get("/overview", async (req: Request, res: Response) => {
       prisma.message.count({
         where: { thread: { workspaceId } },
       }),
+      prisma.delegation.count({ where: { workspaceId } }),
+      prisma.delegation.count({ where: { workspaceId, status: "COMPLETED" } }),
+      prisma.delegation.count({ where: { workspaceId, status: { in: ["PLANNING", "EXECUTING", "REVIEWING"] } } }),
+      prisma.delegation.count({ where: { workspaceId, status: "FAILED" } }),
     ]);
 
     res.json({
-      staff: { total: totalStaff, active: activeStaff },
+      staff: { total: totalStaff, active: activeStaff, managers: totalManagers },
       workflows: { total: totalWorkflows, active: activeWorkflows },
       tasks: {
         total: totalTasks,
@@ -50,6 +60,13 @@ router.get("/overview", async (req: Request, res: Response) => {
         successRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
       },
       conversations: { threads: totalThreads, messages: totalMessages },
+      delegations: {
+        total: totalDelegations,
+        completed: completedDelegations,
+        active: activeDelegations,
+        failed: failedDelegations,
+        successRate: totalDelegations > 0 ? Math.round((completedDelegations / totalDelegations) * 100) : 0,
+      },
     });
   } catch (err) {
     console.error("Analytics overview error:", err);
