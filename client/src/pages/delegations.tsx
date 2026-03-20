@@ -294,6 +294,7 @@ export default function DelegationsPage() {
   }, [delegations]);
   const staff = staffData || [];
   const managers = staff.filter((s) => s.isManager && s.status === "ACTIVE");
+  const specialists = staff.filter((s) => !s.isManager && s.status === "ACTIVE");
 
   const filteredDelegations = delegations
     .filter((d) => activeFilter === "ALL" || d.status === activeFilter)
@@ -525,6 +526,21 @@ export default function DelegationsPage() {
                   </p>
                 )}
               </div>
+
+              {/* Team Info */}
+              {staff.length > 0 && (
+                <div className="rounded-md bg-secondary/30 border border-border px-3 py-2 flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    <span className="text-foreground font-medium">{specialists.length}</span> specialist{specialists.length !== 1 ? "s" : ""} available
+                    {specialists.length > 0 && (
+                      <span className="text-muted-foreground/60">
+                        {" "}({specialists.map(s => s.name).slice(0, 3).join(", ")}{specialists.length > 3 ? `, +${specialists.length - 3} more` : ""})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
 
               {/* Template Picker */}
               <div className="space-y-2">

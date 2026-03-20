@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { apiGet } from "@/lib/api";
 import {
   LayoutDashboard,
   Users,
@@ -41,6 +43,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { workspaces, currentWorkspace, setCurrentWorkspace } = useWorkspace();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
+
+  // Active delegation count for nav badge
+  const { data: activeDelegations } = useQuery({
+    queryKey: ["active-delegations-count", currentWorkspace?.id],
+    queryFn: async () => {
+      const data = await apiGet<any[]>(
+        `/api/workspaces/${currentWorkspace?.id}/delegations?status=EXECUTING`
+      );
+      return Array.isArray(data) ? data.length : 0;
+    },
+    enabled: !!currentWorkspace?.id,
+    refetchInterval: 15000,
+  });
+  const activeDelegationCount = activeDelegations || 0;
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const userInitials = user?.name
@@ -102,7 +118,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   onClick={() => setSidebarOpen(false)}
                 >
                   <item.icon className="h-5 w-5" />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {item.path === "/delegations" && activeDelegationCount > 0 && (
+                    <span className="h-5 min-w-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center px-1.5 animate-pulse">
+                      {activeDelegationCount}
+                    </span>
+                  )}
                 </div>
               </Link>
             );
