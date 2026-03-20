@@ -26,6 +26,11 @@ const addMemberSchema = z.object({
   role: z.enum(["WORKSPACE_OWNER", "MEMBER"]).optional().default("MEMBER"),
 });
 
+const inviteMemberSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  role: z.enum(["WORKSPACE_OWNER", "MEMBER"]).optional().default("MEMBER"),
+});
+
 // ─── GET / ──────────────────────────────────────────────────────────────────
 
 router.get("/", async (req: Request, res: Response) => {
@@ -186,6 +191,59 @@ router.post(
       res.status(201).json({ member });
     } catch (err) {
       console.error("Add member error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// ─── POST /:workspaceId/members/invite — Invite by email ────────────────────
+
+router.post(
+  "/:workspaceId/members/invite",
+  async (req: Request, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const parsed = inviteMemberSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Validation failed",
+          details: parsed.error.flatten().fieldErrors,
+        });
+        return;
+      }
+
+      const { email, role } = parsed.data;
+
+      // Find user by email
+      const targetUser = await prisma.user.findUnique({
+        where: { email },
+      });
+      if (!targetUser) {
+        res.status(404).json({
+          error: "No account found with that email. They need to register first.",
+        });
+        return;
+      }
+
+      // Check existing membership
+      const existingMember = await prisma.workspaceMember.findUnique({
+        where: { workspaceId_userId: { workspaceId, userId: targetUser.id } },
+      });
+      if (existingMember) {
+        res.status(400).json({ error: "User is already a member of this workspace" });
+        return;
+      }
+
+      const member = await prisma.workspaceMember.create({
+        data: { workspaceId, userId: targetUser.id, role },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+      });
+
+      res.status(201).json({ member });
+    } catch (err) {
+      console.error("Invite member error:", err);
       res.status(500).json({ error: "Internal server error" });
     }
   }

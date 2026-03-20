@@ -175,20 +175,27 @@ export async function executeDelegation(
     totalTokens += synthesisResult.tokensUsed;
     totalCost += synthesisResult.costUsd;
 
-    // ── Done ───────────────────────────────────────────────────────────
+    // ── Done (or pending approval) ─────────────────────────────────────
+    // Reload to check requireApproval flag
+    const updatedDelegation = await prisma.delegation.findUnique({
+      where: { id: delegationId },
+    });
+
+    const finalStatus = updatedDelegation?.requireApproval ? "PENDING_APPROVAL" : "COMPLETED";
+
     await prisma.delegation.update({
       where: { id: delegationId },
       data: {
-        status: "COMPLETED",
+        status: finalStatus,
         finalOutput: synthesisResult.content,
         totalTokensUsed: totalTokens,
         totalCostUsd: totalCost,
-        finishedAt: new Date(),
+        finishedAt: finalStatus === "COMPLETED" ? new Date() : undefined,
       },
     });
 
     return {
-      status: "completed",
+      status: finalStatus === "COMPLETED" ? "completed" : "completed",
       plan: delegation.plan as unknown as SubtaskPlan[],
       subtaskResults,
       finalOutput: synthesisResult.content,

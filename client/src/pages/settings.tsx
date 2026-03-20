@@ -565,14 +565,32 @@ function MembersSection() {
   const { currentWorkspace } = useWorkspace();
   const wsId = currentWorkspace?.id;
   const queryClient = useQueryClient();
-  const [addEmail, setAddEmail] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [showInvite, setShowInvite] = useState(false);
 
   const { data: membersData, isLoading } = useQuery({
     queryKey: ["workspace-members", wsId],
     queryFn: () =>
       apiGet<{ members: Member[] }>(`/api/workspaces/${wsId}/members`),
     enabled: !!wsId,
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: (email: string) =>
+      apiPost(`/api/workspaces/${wsId}/members/invite`, { email }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace-members", wsId] });
+      setInviteEmail("");
+      setShowInvite(false);
+      toast({ title: "Member invited successfully" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Invite failed",
+        description: err.message || "Could not invite user",
+        variant: "destructive",
+      });
+    },
   });
 
   const removeMutation = useMutation({
@@ -594,11 +612,41 @@ function MembersSection() {
             <Users className="h-5 w-5 text-muted-foreground" />
             <CardTitle className="text-lg">Team Members</CardTitle>
           </div>
-          <Badge variant="secondary">{members.length} members</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">{members.length} members</Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => setShowInvite(!showInvite)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Invite
+            </Button>
+          </div>
         </div>
         <CardDescription>People with access to this workspace</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Invite form */}
+        {showInvite && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="email"
+              placeholder="Enter email address..."
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="h-9"
+            />
+            <Button
+              size="sm"
+              onClick={() => inviteMutation.mutate(inviteEmail)}
+              disabled={inviteMutation.isPending || !inviteEmail.trim()}
+            >
+              {inviteMutation.isPending ? "Inviting..." : "Add"}
+            </Button>
+          </div>
+        )}
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => (

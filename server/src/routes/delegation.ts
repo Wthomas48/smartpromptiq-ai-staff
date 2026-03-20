@@ -28,6 +28,7 @@ const createDelegationSchema = z.object({
   autoExecute: z.boolean().optional().default(false),
   isRecurring: z.boolean().optional().default(false),
   scheduleCron: z.string().optional(),
+  requireApproval: z.boolean().optional().default(false),
 });
 
 const updatePlanSchema = z.object({
@@ -54,7 +55,7 @@ router.post("/", async (req: Request, res: Response) => {
       return;
     }
 
-    const { managerId, goal, context, autoExecute, isRecurring, scheduleCron } = parsed.data;
+    const { managerId, goal, context, autoExecute, isRecurring, scheduleCron, requireApproval } = parsed.data;
 
     // Verify manager exists in workspace and is a manager
     const manager = await prisma.aIStaff.findFirst({
@@ -77,6 +78,7 @@ router.post("/", async (req: Request, res: Response) => {
         context,
         isRecurring: isRecurring || false,
         scheduleCron: scheduleCron || null,
+        requireApproval: requireApproval || false,
       },
       include: { manager: { select: { id: true, name: true, roleType: true } } },
     });
@@ -386,6 +388,80 @@ router.post("/:delegationId/rerun", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Rerun delegation error:", err);
     res.status(500).json({ error: "Failed to re-run delegation" });
+  }
+});
+
+// ─── POST /:delegationId/approve — Approve a pending delegation ─────────────
+
+router.post("/:delegationId/approve", async (req: Request, res: Response) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const { delegationId } = req.params;
+
+    const delegation = await prisma.delegation.findFirst({
+      where: { id: delegationId, workspaceId },
+    });
+
+    if (!delegation) {
+      res.status(404).json({ error: "Delegation not found" });
+      return;
+    }
+
+    if (delegation.status !== "PENDING_APPROVAL") {
+      res.status(400).json({ error: "Delegation is not pending approval" });
+      return;
+    }
+
+    await prisma.delegation.update({
+      where: { id: delegationId },
+      data: {
+        status: "COMPLETED",
+        approvalNote: req.body.note || null,
+        finishedAt: new Date(),
+      },
+    });
+
+    res.json({ message: "Delegation approved" });
+  } catch (err) {
+    console.error("Approve delegation error:", err);
+    res.status(500).json({ error: "Failed to approve delegation" });
+  }
+});
+
+// ─── POST /:delegationId/reject — Reject a pending delegation ──────────────
+
+router.post("/:delegationId/reject", async (req: Request, res: Response) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const { delegationId } = req.params;
+
+    const delegation = await prisma.delegation.findFirst({
+      where: { id: delegationId, workspaceId },
+    });
+
+    if (!delegation) {
+      res.status(404).json({ error: "Delegation not found" });
+      return;
+    }
+
+    if (delegation.status !== "PENDING_APPROVAL") {
+      res.status(400).json({ error: "Delegation is not pending approval" });
+      return;
+    }
+
+    await prisma.delegation.update({
+      where: { id: delegationId },
+      data: {
+        status: "FAILED",
+        approvalNote: req.body.note || "Rejected by user",
+        finishedAt: new Date(),
+      },
+    });
+
+    res.json({ message: "Delegation rejected" });
+  } catch (err) {
+    console.error("Reject delegation error:", err);
+    res.status(500).json({ error: "Failed to reject delegation" });
   }
 });
 

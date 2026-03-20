@@ -146,6 +146,7 @@ const createDelegationSchema = z.object({
   context: z.string().max(10000).optional(),
   isRecurring: z.boolean().optional(),
   scheduleCron: z.string().optional(),
+  requireApproval: z.boolean().optional(),
 });
 
 const schedulePresets = [
@@ -169,6 +170,8 @@ function statusColor(status: string) {
     case "EXECUTING":
     case "REVIEWING":
       return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+    case "PENDING_APPROVAL":
+      return "bg-purple-500/20 text-purple-400 border-purple-500/30";
     case "PLANNING":
       return "bg-amber-500/20 text-amber-400 border-amber-500/30";
     default:
@@ -185,6 +188,8 @@ function statusIcon(status: string) {
     case "EXECUTING":
     case "REVIEWING":
       return <Loader2 className="h-4 w-4 animate-spin" />;
+    case "PENDING_APPROVAL":
+      return <Clock className="h-4 w-4" />;
     case "PLANNING":
       return <Brain className="h-4 w-4" />;
     default:
@@ -256,6 +261,7 @@ export default function DelegationsPage() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [isScheduled, setIsScheduled] = useState(false);
   const [selectedCron, setSelectedCron] = useState("");
+  const [requireApproval, setRequireApproval] = useState(false);
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "cost">("newest");
 
   // ── Data Fetching ───────────────────────────────────────────────────────
@@ -346,6 +352,7 @@ export default function DelegationsPage() {
         autoExecute: true,
         isRecurring: isScheduled,
         scheduleCron: isScheduled ? selectedCron : undefined,
+        requireApproval,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
@@ -353,6 +360,7 @@ export default function DelegationsPage() {
       reset();
       setIsScheduled(false);
       setSelectedCron("");
+      setRequireApproval(false);
       toast({
         title: isScheduled ? "Scheduled delegation created" : "Delegation created",
         description: isScheduled ? "Will run on schedule automatically" : "Manager agent is planning and executing...",
@@ -387,6 +395,24 @@ export default function DelegationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
       toast({ title: "Delegation cloned", description: "Running again with the same goal..." });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (delegationId: string) =>
+      apiPost(`/api/workspaces/${wsId}/delegations/${delegationId}/approve`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
+      toast({ title: "Delegation approved" });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (delegationId: string) =>
+      apiPost(`/api/workspaces/${wsId}/delegations/${delegationId}/reject`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
+      toast({ title: "Delegation rejected", variant: "destructive" });
     },
   });
 
@@ -474,6 +500,7 @@ export default function DelegationsPage() {
     { key: "ALL", label: "All" },
     { key: "PLANNING", label: "Planning" },
     { key: "EXECUTING", label: "Executing" },
+    { key: "PENDING_APPROVAL", label: "Pending Approval" },
     { key: "COMPLETED", label: "Completed" },
     { key: "FAILED", label: "Failed" },
   ];
@@ -666,6 +693,24 @@ export default function DelegationsPage() {
                 )}
               </div>
 
+              {/* Require Approval Toggle */}
+              <label className="flex items-center gap-3 rounded-lg border border-border bg-secondary/20 p-3 cursor-pointer hover:bg-secondary/30 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={requireApproval}
+                  onChange={(e) => setRequireApproval(e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-primary"
+                />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Require approval before delivery
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Review the final output before marking as complete
+                  </p>
+                </div>
+              </label>
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -855,6 +900,31 @@ export default function DelegationsPage() {
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </Button>
+
+                      {delegation.status === "PENDING_APPROVAL" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => approveMutation.mutate(delegation.id)}
+                            disabled={approveMutation.isPending}
+                            className="gap-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => rejectMutation.mutate(delegation.id)}
+                            disabled={rejectMutation.isPending}
+                            className="gap-1 border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
 
                       {delegation.status === "PLANNING" && (
                         <Button

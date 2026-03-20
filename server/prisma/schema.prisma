@@ -96,6 +96,7 @@ enum DelegationStatus {
   PLANNING
   EXECUTING
   REVIEWING
+  PENDING_APPROVAL
   COMPLETED
   FAILED
 }
@@ -377,6 +378,8 @@ model Delegation {
   plan            Json             @default("[]")
   finalOutput     String?
   status          DelegationStatus @default(PLANNING)
+  requireApproval Boolean          @default(false)
+  approvalNote    String?
   isRecurring     Boolean          @default(false)
   scheduleCron    String?
   lastRunAt       DateTime?
