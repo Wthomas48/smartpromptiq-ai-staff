@@ -27,6 +27,7 @@ import analyticsRouter from "./routes/analytics.js";
 import uploadsRouter from "./routes/uploads.js";
 import delegationRouter from "./routes/delegation.js";
 import auditLogsRouter from "./routes/auditLogs.js";
+import apiKeysRouter from "./routes/apiKeys.js";
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
@@ -76,6 +77,7 @@ app.use("/api/workspaces/:workspaceId/analytics", analyticsRouter);
 app.use("/api/workspaces/:workspaceId/uploads", uploadsRouter);
 app.use("/api/workspaces/:workspaceId/delegations", delegationRouter);
 app.use("/api/workspaces/:workspaceId/audit-logs", auditLogsRouter);
+app.use("/api/workspaces/:workspaceId/api-keys", apiKeysRouter);
 
 // ─── Static file serving for uploads ───────────────────────────────────────
 
@@ -118,9 +120,14 @@ app.use(
 
 // ─── Start Server ───────────────────────────────────────────────────────────
 
+import { startScheduler } from "./services/scheduler.js";
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`SmartPromptIQ AI Staff server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
+
+  // Start the delegation scheduler
+  startScheduler();
 });
 
 export default app;

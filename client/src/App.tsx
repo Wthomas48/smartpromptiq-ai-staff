@@ -1,5 +1,6 @@
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import AppLayout from "@/components/layout/AppLayout";
@@ -198,11 +199,13 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <WorkspaceProvider>
-        <AppRoutes />
-        <Toaster />
-      </WorkspaceProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <WorkspaceProvider>
+          <AppRoutes />
+          <Toaster />
+        </WorkspaceProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

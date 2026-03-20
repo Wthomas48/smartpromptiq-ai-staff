@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, CreditCard, Building2, Check, Brain, Eye, EyeOff, Save, Users, Trash2, Plus, Edit2, X } from "lucide-react";
+import { User, CreditCard, Building2, Check, Brain, Eye, EyeOff, Save, Users, Trash2, Plus, Edit2, X, Key, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -160,6 +160,9 @@ export default function SettingsPage() {
       {/* Members Section */}
       <MembersSection />
 
+      {/* API Keys Section */}
+      <APIKeysSection />
+
       {/* AI Providers Section */}
       <AIProvidersSection />
 
@@ -294,6 +297,170 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─── API Keys Section ───────────────────────────────────────────────────────
+
+interface APIKeyItem {
+  id: string;
+  label: string;
+  scopes: string[];
+  keyPrefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+function APIKeysSection() {
+  const { currentWorkspace } = useWorkspace();
+  const wsId = currentWorkspace?.id;
+  const queryClient = useQueryClient();
+  const [newLabel, setNewLabel] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
+
+  const { data: keys, isLoading } = useQuery({
+    queryKey: ["api-keys", wsId],
+    queryFn: () => apiGet<APIKeyItem[]>(`/api/workspaces/${wsId}/api-keys`),
+    enabled: !!wsId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (label: string) =>
+      apiPost<{ key: string }>(`/api/workspaces/${wsId}/api-keys`, { label }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["api-keys", wsId] });
+      setNewKey(data.key);
+      setNewLabel("");
+      toast({ title: "API key created" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (keyId: string) =>
+      apiDelete(`/api/workspaces/${wsId}/api-keys/${keyId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["api-keys", wsId] });
+      toast({ title: "API key revoked" });
+    },
+  });
+
+  const keyList = Array.isArray(keys) ? keys : [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Key className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">API Keys</CardTitle>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            onClick={() => { setShowCreate(!showCreate); setNewKey(null); }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Key
+          </Button>
+        </div>
+        <CardDescription>
+          API keys for programmatic access to your workspace
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* New key display */}
+        {newKey && (
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
+            <p className="text-xs font-semibold text-emerald-400">
+              New API Key — copy it now, it won't be shown again
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 rounded-md bg-background border border-border text-xs font-mono text-foreground break-all">
+                {newKey}
+              </code>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 flex-shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(newKey);
+                  toast({ title: "API key copied" });
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Create form */}
+        {showCreate && !newKey && (
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Key label (e.g., Production, CI/CD)"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              className="h-9"
+            />
+            <Button
+              size="sm"
+              onClick={() => createMutation.mutate(newLabel)}
+              disabled={createMutation.isPending || !newLabel.trim()}
+            >
+              {createMutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        )}
+
+        {/* Key list */}
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+          </div>
+        ) : keyList.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No API keys yet. Create one to access your workspace programmatically.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {keyList.map((key) => (
+              <div
+                key={key.id}
+                className="flex items-center justify-between rounded-lg border border-border p-3"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">{key.label}</p>
+                    <code className="text-[10px] text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded">
+                      {key.keyPrefix}
+                    </code>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Created {new Date(key.createdAt).toLocaleDateString()}
+                    {key.lastUsedAt && ` · Last used ${new Date(key.lastUsedAt).toLocaleDateString()}`}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400"
+                  onClick={() => {
+                    if (window.confirm(`Revoke API key "${key.label}"? This cannot be undone.`)) {
+                      deleteMutation.mutate(key.id);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
