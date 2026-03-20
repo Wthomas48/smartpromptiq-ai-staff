@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiGet, apiPut } from "@/lib/api";
+import { Pagination } from "@/components/ui/pagination";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -103,6 +104,8 @@ export default function TasksPage() {
   const queryClient = useQueryClient();
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>("ALL");
+  const [taskPage, setTaskPage] = useState(0);
+  const TASKS_PER_PAGE = 20;
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
   const [noteText, setNoteText] = useState("");
@@ -123,7 +126,8 @@ export default function TasksPage() {
     enabled: !!wsId,
   });
 
-  const tasks = data?.tasks ?? [];
+  const allTasks = data?.tasks ?? [];
+  const tasks = allTasks.slice(taskPage * TASKS_PER_PAGE, (taskPage + 1) * TASKS_PER_PAGE);
 
   // ─── Mutations ──────────────────────────────────────────────────────────
 
@@ -577,6 +581,16 @@ export default function TasksPage() {
             );
           })}
         </div>
+      )}
+
+      {/* Pagination */}
+      {!isLoading && allTasks.length > TASKS_PER_PAGE && (
+        <Pagination
+          page={taskPage}
+          pageSize={TASKS_PER_PAGE}
+          total={allTasks.length}
+          onPageChange={setTaskPage}
+        />
       )}
     </div>
   );

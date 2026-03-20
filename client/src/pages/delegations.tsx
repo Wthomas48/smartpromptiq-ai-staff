@@ -263,6 +263,8 @@ export default function DelegationsPage() {
   const [selectedCron, setSelectedCron] = useState("");
   const [requireApproval, setRequireApproval] = useState(false);
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "cost">("newest");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
 
   // ── Data Fetching ───────────────────────────────────────────────────────
 
@@ -424,6 +426,29 @@ export default function DelegationsPage() {
     },
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) {
+        await apiDelete(`/api/workspaces/${wsId}/delegations/${id}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
+      setSelectedIds(new Set());
+      setSelectMode(false);
+      toast({ title: `Deleted ${selectedIds.size} delegations` });
+    },
+  });
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   // ── Detail View ─────────────────────────────────────────────────────────
 
   const { data: delegationDetail, isLoading: detailLoading } = useQuery({
@@ -518,6 +543,17 @@ export default function DelegationsPage() {
           </p>
         </div>
 
+        <div className="flex items-center gap-2">
+          {filteredDelegations.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setSelectMode(!selectMode); setSelectedIds(new Set()); }}
+              className="gap-1"
+            >
+              {selectMode ? "Done" : "Select"}
+            </Button>
+          )}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -735,7 +771,40 @@ export default function DelegationsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectMode && (
+        <div className="flex items-center justify-between rounded-lg bg-secondary/50 border border-border px-4 py-2">
+          <span className="text-sm text-muted-foreground">
+            {selectedIds.size} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              className="gap-1"
+              disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
+              onClick={() => {
+                if (window.confirm(`Delete ${selectedIds.size} delegations?`)) {
+                  bulkDeleteMutation.mutate(Array.from(selectedIds));
+                }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete Selected"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Filter Tabs + Search */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
@@ -821,6 +890,14 @@ export default function DelegationsPage() {
                   {/* Main Row */}
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-3 min-w-0 flex-1">
+                      {selectMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(delegation.id)}
+                          onChange={() => toggleSelect(delegation.id)}
+                          className="h-4 w-4 mt-2.5 rounded border-border accent-primary cursor-pointer"
+                        />
+                      )}
                       <div className="mt-0.5">
                         <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
                           {delegation.manager.name.charAt(0)}

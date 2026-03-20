@@ -28,6 +28,7 @@ import uploadsRouter from "./routes/uploads.js";
 import delegationRouter from "./routes/delegation.js";
 import auditLogsRouter from "./routes/auditLogs.js";
 import apiKeysRouter from "./routes/apiKeys.js";
+import webhooksRouter from "./routes/webhooks.js";
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
@@ -78,6 +79,7 @@ app.use("/api/workspaces/:workspaceId/uploads", uploadsRouter);
 app.use("/api/workspaces/:workspaceId/delegations", delegationRouter);
 app.use("/api/workspaces/:workspaceId/audit-logs", auditLogsRouter);
 app.use("/api/workspaces/:workspaceId/api-keys", apiKeysRouter);
+app.use("/api/webhooks", webhooksRouter);
 
 // ─── Static file serving for uploads ───────────────────────────────────────
 

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
+import { Pagination } from "@/components/ui/pagination";
 
 interface Workflow {
   id: number;
@@ -62,6 +63,8 @@ export default function WorkflowsPage() {
   const wsId = currentWorkspace?.id;
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [wfPage, setWfPage] = useState(0);
+  const WF_PER_PAGE = 20;
   const [triggerType, setTriggerType] = useState("MANUAL");
   const [editOpen, setEditOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
@@ -368,7 +371,7 @@ export default function WorkflowsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {workflowList.map((wf) => (
+          {workflowList.slice(wfPage * WF_PER_PAGE, (wfPage + 1) * WF_PER_PAGE).map((wf) => (
             <Card key={wf.id}>
               <CardContent className="p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -427,6 +430,16 @@ export default function WorkflowsPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Pagination */}
+      {workflowList.length > WF_PER_PAGE && (
+        <Pagination
+          page={wfPage}
+          pageSize={WF_PER_PAGE}
+          total={workflowList.length}
+          onPageChange={setWfPage}
+        />
       )}
 
       {/* Edit Workflow Dialog */}
