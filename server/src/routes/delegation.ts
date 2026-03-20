@@ -326,6 +326,54 @@ router.post("/:delegationId/run", async (req: Request, res: Response) => {
   }
 });
 
+// ─── POST /:delegationId/rerun — Reset a failed delegation and run again ────
+
+router.post("/:delegationId/rerun", async (req: Request, res: Response) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const { delegationId } = req.params;
+
+    const delegation = await prisma.delegation.findFirst({
+      where: { id: delegationId, workspaceId },
+    });
+
+    if (!delegation) {
+      res.status(404).json({ error: "Delegation not found" });
+      return;
+    }
+
+    if (delegation.status !== "FAILED" && delegation.status !== "COMPLETED") {
+      res.status(400).json({ error: "Can only re-run failed or completed delegations" });
+      return;
+    }
+
+    // Reset delegation state
+    await prisma.delegationSubtask.deleteMany({ where: { delegationId } });
+    await prisma.delegation.update({
+      where: { id: delegationId },
+      data: {
+        status: "PLANNING",
+        plan: [],
+        finalOutput: null,
+        totalTokensUsed: 0,
+        totalCostUsd: 0,
+        startedAt: null,
+        finishedAt: null,
+      },
+    });
+
+    // Execute in background
+    executeDelegation(delegationId, workspaceId).catch((err) => {
+      console.error(`Delegation ${delegationId} rerun error:`, err);
+    });
+
+    res.json({ message: "Delegation re-run started", delegationId });
+  } catch (err) {
+    console.error("Rerun delegation error:", err);
+    res.status(500).json({ error: "Failed to re-run delegation" });
+  }
+});
+
 // ─── GET /:delegationId/subtasks — List subtasks ────────────────────────────
 
 router.get("/:delegationId/subtasks", async (req: Request, res: Response) => {

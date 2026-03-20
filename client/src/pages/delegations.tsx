@@ -19,6 +19,7 @@ import {
   ChevronUp,
   Users,
   ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
@@ -237,6 +238,14 @@ export default function DelegationsPage() {
   const runMutation = useMutation({
     mutationFn: (delegationId: string) =>
       apiPost(`/api/workspaces/${wsId}/delegations/${delegationId}/run`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
+    },
+  });
+
+  const rerunMutation = useMutation({
+    mutationFn: (delegationId: string) =>
+      apiPost(`/api/workspaces/${wsId}/delegations/${delegationId}/rerun`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
     },
@@ -538,6 +547,19 @@ export default function DelegationsPage() {
                         >
                           <Play className="h-3.5 w-3.5" />
                           Run
+                        </Button>
+                      )}
+
+                      {delegation.status === "FAILED" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => rerunMutation.mutate(delegation.id)}
+                          disabled={rerunMutation.isPending}
+                          className="gap-1"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Re-run
                         </Button>
                       )}
 

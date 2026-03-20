@@ -857,6 +857,7 @@ export default function CreateStaffPage() {
   const [provider, setProvider] = useState("openai");
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
+  const [isManager, setIsManager] = useState(false);
 
   // Submission
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -948,6 +949,7 @@ export default function CreateStaffPage() {
         name: staffName.trim(),
         roleType: selectedRoleData?.roleType || "CUSTOM",
         description: staffDescription.trim() || undefined,
+        isManager,
         modelConfig: {
           provider,
           temperature,
@@ -1465,6 +1467,11 @@ export default function CreateStaffPage() {
                         {personalities.find((p) => p.id === personality)?.name}
                       </span>
                     )}
+                    {isManager && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                        Manager Agent
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1516,6 +1523,24 @@ export default function CreateStaffPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Manager Toggle */}
+                  <div className="border-t border-border/30 pt-4">
+                    <label className="flex items-center gap-3 rounded-lg border border-border/30 bg-muted/20 p-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={isManager}
+                        onChange={(e) => setIsManager(e.target.checked)}
+                        className="h-4 w-4 rounded border-border accent-violet-500"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Enable as Manager Agent</p>
+                        <p className="text-xs text-muted-foreground">
+                          Can decompose goals and delegate subtasks to other AI staff members
+                        </p>
+                      </div>
+                    </label>
+                  </div>
 
                   {/* Advanced Settings */}
                   <div className="border-t border-border/30 pt-4">
