@@ -190,15 +190,17 @@ const STAT_CONFIGS = [
   },
 ] as const;
 
-const ACTIVITY_ICONS = {
+const ACTIVITY_ICONS: Record<string, any> = {
   message: MessageCircle,
   task: CheckCircle2,
-} as const;
+  delegation: Network,
+};
 
-const ACTIVITY_COLORS = {
+const ACTIVITY_COLORS: Record<string, string> = {
   message: "text-blue-400 bg-blue-400/10",
   task: "text-orange-400 bg-orange-400/10",
-} as const;
+  delegation: "text-violet-400 bg-violet-400/10",
+};
 
 const QUICK_ACTIONS = [
   { label: "New Staff", icon: Plus, href: "/ai-staff/create", color: "from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30" },

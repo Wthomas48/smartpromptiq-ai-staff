@@ -228,9 +228,20 @@ router.get("/activity", async (req: Request, res: Response) => {
       take: limit,
     });
 
+    // Get recent delegations
+    const recentDelegations = await prisma.delegation.findMany({
+      where: { workspaceId },
+      include: {
+        manager: { select: { id: true, name: true, roleType: true } },
+        _count: { select: { subtasks: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
     // Merge into unified activity feed
     type ActivityItem = {
-      type: "task" | "message";
+      type: "task" | "message" | "delegation";
       id: string;
       timestamp: Date;
       staffName: string;
@@ -256,6 +267,15 @@ router.get("/activity", async (req: Request, res: Response) => {
         staffName: m.thread.aiStaff?.name || "Unknown",
         staffRole: m.thread.aiStaff?.roleType || "assistant",
         description: `Replied in "${m.thread.title}"`,
+      })),
+      ...recentDelegations.map((d) => ({
+        type: "delegation" as const,
+        id: d.id,
+        timestamp: d.createdAt,
+        staffName: d.manager.name,
+        staffRole: d.manager.roleType,
+        description: `Delegation "${d.goal.slice(0, 50)}${d.goal.length > 50 ? "..." : ""}" — ${d.status.toLowerCase()} (${d._count.subtasks} subtasks)`,
+        status: d.status,
       })),
     ];
 
