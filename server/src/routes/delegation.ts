@@ -12,6 +12,7 @@ import {
   executeDelegation,
   planDelegation,
 } from "../services/delegationEngine.js";
+import { createAuditLog } from "./auditLogs.js";
 
 const prisma = new PrismaClient();
 const router = Router({ mergeParams: true });
@@ -86,6 +87,12 @@ router.post("/", async (req: Request, res: Response) => {
         console.error(`Delegation ${delegation.id} execution error:`, err);
       });
     }
+
+    createAuditLog(workspaceId, "USER", (req as any).user.id, "delegation.created", {
+      delegationId: delegation.id,
+      goal: goal.slice(0, 100),
+      managerId,
+    });
 
     res.status(201).json(delegation);
   } catch (err) {

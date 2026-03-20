@@ -48,6 +48,11 @@ const updateAIStaffSchema = z.object({
   modelConfig: z.record(z.unknown()).optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "TRAINING"]).optional(),
   isManager: z.boolean().optional(),
+  systemPrompt: z.string().optional(),
+  modelProvider: z.string().optional(),
+  modelName: z.string().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  maxTokens: z.number().int().min(1).max(32000).optional(),
 });
 
 const createFromTemplateSchema = z.object({
@@ -250,6 +255,16 @@ aiStaffRouter.put("/:staffId", async (req: Request, res: Response) => {
       updateData.status = parsed.data.status;
     if (parsed.data.isManager !== undefined)
       updateData.isManager = parsed.data.isManager;
+    if (parsed.data.systemPrompt !== undefined)
+      updateData.systemPrompt = parsed.data.systemPrompt;
+    if (parsed.data.modelProvider !== undefined)
+      updateData.modelProvider = parsed.data.modelProvider;
+    if (parsed.data.modelName !== undefined)
+      updateData.modelName = parsed.data.modelName;
+    if (parsed.data.temperature !== undefined)
+      updateData.temperature = parsed.data.temperature;
+    if (parsed.data.maxTokens !== undefined)
+      updateData.maxTokens = parsed.data.maxTokens;
 
     const staff = await prisma.aIStaff.update({
       where: { id: staffId },

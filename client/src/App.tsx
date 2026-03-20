@@ -17,6 +17,7 @@ import OnboardingPage from "@/pages/onboarding";
 import CreateStaffPage from "@/pages/create-staff";
 import LandingPage from "@/pages/landing";
 import DelegationsPage from "@/pages/delegations";
+import AuditLogsPage from "@/pages/audit-logs";
 import NotFoundPage from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -173,6 +174,12 @@ function AppRoutes() {
       <Route path="/integrations">
         <ProtectedRoute>
           <IntegrationsPage />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/audit-logs">
+        <ProtectedRoute>
+          <AuditLogsPage />
         </ProtectedRoute>
       </Route>
 

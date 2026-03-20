@@ -12,6 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiGet, apiPut, apiDelete } from "@/lib/api";
 import AvatarGenerator, { getAvatarGradient } from "@/components/ai-staff/AvatarGenerator";
@@ -79,6 +86,11 @@ export default function AIStaffDetailPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editModelConfig, setEditModelConfig] = useState("");
   const [editIsManager, setEditIsManager] = useState(false);
+  const [editSystemPrompt, setEditSystemPrompt] = useState("");
+  const [editProvider, setEditProvider] = useState("openai");
+  const [editModel, setEditModel] = useState("gpt-4o-mini");
+  const [editTemperature, setEditTemperature] = useState(0.7);
+  const [editMaxTokens, setEditMaxTokens] = useState(2048);
 
   const { data: staff, isLoading } = useQuery({
     queryKey: ["ai-staff-detail", wsId, staffId],
@@ -113,12 +125,8 @@ export default function AIStaffDetailPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: {
-      name: string;
-      description?: string;
-      modelConfig?: Record<string, unknown>;
-      isManager?: boolean;
-    }) => apiPut(`/api/workspaces/${wsId}/ai-staff/${staffId}`, data),
+    mutationFn: (data: Record<string, unknown>) =>
+      apiPut(`/api/workspaces/${wsId}/ai-staff/${staffId}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["ai-staff-detail", wsId, staffId],
@@ -151,6 +159,11 @@ export default function AIStaffDetailPage() {
         staff.modelConfig ? JSON.stringify(staff.modelConfig, null, 2) : ""
       );
       setEditIsManager(staff.isManager || false);
+      setEditSystemPrompt(staff.systemPrompt || "");
+      setEditProvider(staff.modelProvider || "openai");
+      setEditModel(staff.modelName || "gpt-4o-mini");
+      setEditTemperature(staff.temperature ?? 0.7);
+      setEditMaxTokens(staff.maxTokens ?? 2048);
       setEditing(true);
     }
   };
@@ -169,6 +182,11 @@ export default function AIStaffDetailPage() {
       description: editDescription || undefined,
       modelConfig,
       isManager: editIsManager,
+      systemPrompt: editSystemPrompt,
+      modelProvider: editProvider,
+      modelName: editModel,
+      temperature: editTemperature,
+      maxTokens: editMaxTokens,
     });
   };
 
@@ -372,14 +390,90 @@ export default function AIStaffDetailPage() {
                       </div>
                     </label>
                   </div>
+                  {/* System Prompt */}
                   <div className="space-y-2">
-                    <Label>Model Config (JSON)</Label>
+                    <Label>System Prompt</Label>
                     <Textarea
-                      value={editModelConfig}
-                      onChange={(e) => setEditModelConfig(e.target.value)}
-                      rows={6}
-                      className="font-mono text-xs"
+                      value={editSystemPrompt}
+                      onChange={(e) => setEditSystemPrompt(e.target.value)}
+                      rows={4}
+                      placeholder="You are a helpful AI assistant specialized in..."
+                      className="text-sm"
                     />
+                    <p className="text-[10px] text-muted-foreground">
+                      Use {"{{workspace_name}}"} as a placeholder for the workspace name.
+                    </p>
+                  </div>
+
+                  {/* Model Settings */}
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-1.5">
+                      <Brain className="h-3.5 w-3.5" />
+                      Model Settings
+                    </Label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Provider</Label>
+                        <Select value={editProvider} onValueChange={setEditProvider}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai">OpenAI</SelectItem>
+                            <SelectItem value="anthropic">Anthropic</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Model</Label>
+                        <Select value={editModel} onValueChange={setEditModel}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {editProvider === "openai" ? (
+                              <>
+                                <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                                <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <SelectItem value="claude-sonnet-4-20250514">Claude Sonnet</SelectItem>
+                                <SelectItem value="claude-opus-4-20250514">Claude Opus</SelectItem>
+                                <SelectItem value="claude-haiku-4-5-20251001">Claude Haiku</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs text-muted-foreground">Temperature</Label>
+                          <span className="text-xs font-mono text-foreground/60">{editTemperature.toFixed(1)}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={editTemperature}
+                          onChange={(e) => setEditTemperature(parseFloat(e.target.value))}
+                          className="w-full h-2 rounded-full appearance-none bg-secondary accent-primary cursor-pointer"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Max Tokens</Label>
+                        <Input
+                          type="number"
+                          value={editMaxTokens}
+                          onChange={(e) => setEditMaxTokens(parseInt(e.target.value) || 2048)}
+                          className="h-9"
+                          min={1}
+                          max={32000}
+                        />
+                      </div>
+                    </div>
                   </div>
                   {updateMutation.isError && (
                     <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
@@ -436,6 +530,21 @@ export default function AIStaffDetailPage() {
                         <p className="text-sm text-foreground">
                           {staff.description}
                         </p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* System Prompt */}
+                  {staff.systemPrompt && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          System Prompt
+                        </p>
+                        <pre className="rounded-lg bg-secondary/50 p-3 text-xs text-foreground whitespace-pre-wrap font-sans max-h-32 overflow-y-auto">
+                          {staff.systemPrompt}
+                        </pre>
                       </div>
                     </>
                   )}
