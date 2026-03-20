@@ -24,6 +24,8 @@ import {
   Check,
   Search,
   Timer,
+  Zap,
+  FileDown,
 } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
@@ -96,6 +98,40 @@ interface Delegation {
   subtasks?: (DelegationSubtask | SubtaskSummary)[];
   _count?: { subtasks: number };
 }
+
+// ─── Delegation Templates ───────────────────────────────────────────────────
+
+const delegationTemplates = [
+  {
+    category: "Marketing",
+    templates: [
+      { title: "Weekly Marketing Report", goal: "Prepare a comprehensive weekly marketing report covering social media metrics, email campaign performance, website traffic trends, and content engagement. Include actionable recommendations for the upcoming week." },
+      { title: "Competitor Analysis", goal: "Conduct a thorough competitor analysis covering their recent marketing campaigns, product updates, pricing changes, and market positioning. Identify opportunities and threats for our business." },
+      { title: "Content Calendar", goal: "Create a detailed content calendar for the next month covering blog posts, social media content, email newsletters, and any seasonal campaigns. Include topics, publish dates, and target audiences." },
+    ],
+  },
+  {
+    category: "Sales",
+    templates: [
+      { title: "Sales Pipeline Review", goal: "Review the current sales pipeline and analyze deal stages, conversion rates, and potential bottlenecks. Provide recommendations to improve close rates and forecast accuracy." },
+      { title: "Outreach Campaign", goal: "Design a multi-step outreach campaign targeting potential enterprise clients. Include email templates, follow-up sequences, value propositions, and objection handling scripts." },
+    ],
+  },
+  {
+    category: "Operations",
+    templates: [
+      { title: "Process Optimization", goal: "Analyze current business processes and identify inefficiencies, bottlenecks, and areas for automation. Provide a prioritized list of improvements with estimated impact." },
+      { title: "Quarterly Business Review", goal: "Prepare a quarterly business review covering key metrics, achievements, challenges, and strategic priorities for the next quarter. Include financial highlights and team performance." },
+    ],
+  },
+  {
+    category: "Product",
+    templates: [
+      { title: "Feature Specification", goal: "Write a detailed feature specification including user stories, acceptance criteria, technical requirements, and design considerations. Include edge cases and potential risks." },
+      { title: "User Feedback Analysis", goal: "Analyze recent user feedback from all channels (support tickets, reviews, surveys) and identify the top themes, pain points, and feature requests. Prioritize by impact and frequency." },
+    ],
+  },
+];
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -188,6 +224,7 @@ export default function DelegationsPage() {
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [copied, setCopied] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // ── Data Fetching ───────────────────────────────────────────────────────
 
@@ -330,6 +367,36 @@ export default function DelegationsPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────────
 
+  function exportAsMarkdown(d: Delegation) {
+    const subtasks = d.subtasks || [];
+    let md = `# Delegation Report\n\n`;
+    md += `**Goal:** ${d.goal}\n\n`;
+    if (d.context) md += `**Context:** ${d.context}\n\n`;
+    md += `**Manager:** ${d.manager.name} (${d.manager.roleType})\n`;
+    md += `**Status:** ${d.status}\n`;
+    if (d.totalCostUsd > 0) md += `**Cost:** ${formatCost(d.totalCostUsd)}\n`;
+    if (d.totalTokensUsed > 0) md += `**Tokens:** ${d.totalTokensUsed.toLocaleString()}\n`;
+    if (d.startedAt && d.finishedAt) md += `**Duration:** ${formatDuration(d.startedAt, d.finishedAt)}\n`;
+    md += `\n---\n\n## Subtasks\n\n`;
+    for (const s of subtasks) {
+      md += `### ${s.title}\n`;
+      md += `**Status:** ${s.status}\n`;
+      if ("assignee" in s && s.assignee) md += `**Assigned to:** ${s.assignee.name}\n`;
+      if ("output" in s && s.output) md += `\n${s.output}\n`;
+      md += `\n`;
+    }
+    if (d.finalOutput) {
+      md += `---\n\n## Final Deliverable\n\n${d.finalOutput}\n`;
+    }
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `delegation-${d.id.slice(0, 8)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -426,6 +493,45 @@ export default function DelegationsPage() {
                   <p className="text-xs text-red-400">
                     {errors.managerId.message}
                   </p>
+                )}
+              </div>
+
+              {/* Template Picker */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplates(!showTemplates)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  {showTemplates ? "Hide templates" : "Use a template"}
+                  {showTemplates ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </button>
+                {showTemplates && (
+                  <div className="rounded-md border border-border bg-secondary/30 p-2 max-h-48 overflow-y-auto space-y-2">
+                    {delegationTemplates.map((cat) => (
+                      <div key={cat.category}>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-1">
+                          {cat.category}
+                        </p>
+                        <div className="space-y-0.5">
+                          {cat.templates.map((t) => (
+                            <button
+                              key={t.title}
+                              type="button"
+                              onClick={() => {
+                                setValue("goal", t.goal);
+                                setShowTemplates(false);
+                              }}
+                              className="w-full text-left px-2 py-1.5 rounded text-xs text-foreground hover:bg-secondary transition-colors"
+                            >
+                              {t.title}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -748,6 +854,17 @@ export default function DelegationsPage() {
                       <Timer className="h-3 w-3" />
                       {formatDuration(delegationDetail.startedAt, delegationDetail.finishedAt)}
                     </span>
+                  )}
+                  {delegationDetail.status === "COMPLETED" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 gap-1 text-xs ml-auto"
+                      onClick={() => exportAsMarkdown(delegationDetail)}
+                    >
+                      <FileDown className="h-3 w-3" />
+                      Export
+                    </Button>
                   )}
                 </div>
                 <DialogTitle className="text-left mt-2">
