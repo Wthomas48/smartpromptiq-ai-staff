@@ -25,6 +25,8 @@ const createDelegationSchema = z.object({
   goal: z.string().min(1).max(5000),
   context: z.string().max(10000).optional(),
   autoExecute: z.boolean().optional().default(false),
+  isRecurring: z.boolean().optional().default(false),
+  scheduleCron: z.string().optional(),
 });
 
 const updatePlanSchema = z.object({
@@ -51,7 +53,7 @@ router.post("/", async (req: Request, res: Response) => {
       return;
     }
 
-    const { managerId, goal, context, autoExecute } = parsed.data;
+    const { managerId, goal, context, autoExecute, isRecurring, scheduleCron } = parsed.data;
 
     // Verify manager exists in workspace and is a manager
     const manager = await prisma.aIStaff.findFirst({
@@ -72,6 +74,8 @@ router.post("/", async (req: Request, res: Response) => {
         createdByUserId: (req as any).user.id,
         goal,
         context,
+        isRecurring: isRecurring || false,
+        scheduleCron: scheduleCron || null,
       },
       include: { manager: { select: { id: true, name: true, roleType: true } } },
     });

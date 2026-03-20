@@ -377,6 +377,10 @@ model Delegation {
   plan            Json             @default("[]")
   finalOutput     String?
   status          DelegationStatus @default(PLANNING)
+  isRecurring     Boolean          @default(false)
+  scheduleCron    String?
+  lastRunAt       DateTime?
+  runCount        Int              @default(0)
   totalTokensUsed Int              @default(0)
   totalCostUsd    Float            @default(0)
   startedAt       DateTime?

@@ -26,6 +26,8 @@ import {
   Timer,
   Zap,
   FileDown,
+  Calendar,
+  Repeat,
 } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
@@ -94,6 +96,9 @@ interface Delegation {
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
+  isRecurring?: boolean;
+  scheduleCron?: string;
+  runCount?: number;
   manager: { id: string; name: string; roleType: string };
   subtasks?: (DelegationSubtask | SubtaskSummary)[];
   _count?: { subtasks: number };
@@ -139,7 +144,17 @@ const createDelegationSchema = z.object({
   managerId: z.string().min(1, "Select a manager"),
   goal: z.string().min(1, "Goal is required").max(5000),
   context: z.string().max(10000).optional(),
+  isRecurring: z.boolean().optional(),
+  scheduleCron: z.string().optional(),
 });
+
+const schedulePresets = [
+  { label: "Daily at 9am", cron: "0 9 * * *" },
+  { label: "Weekdays at 9am", cron: "0 9 * * 1-5" },
+  { label: "Weekly (Monday)", cron: "0 9 * * 1" },
+  { label: "Bi-weekly", cron: "0 9 1,15 * *" },
+  { label: "Monthly (1st)", cron: "0 9 1 * *" },
+];
 
 type CreateDelegationForm = z.infer<typeof createDelegationSchema>;
 
@@ -225,6 +240,9 @@ export default function DelegationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [selectedCron, setSelectedCron] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "cost">("newest");
 
   // ── Data Fetching ───────────────────────────────────────────────────────
 
@@ -283,7 +301,12 @@ export default function DelegationsPage() {
       searchQuery === "" ||
       d.goal.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.manager.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    )
+    .sort((a, b) => {
+      if (sortBy === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sortBy === "cost") return b.totalCostUsd - a.totalCostUsd;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   // ── Form ────────────────────────────────────────────────────────────────
 
@@ -306,12 +329,19 @@ export default function DelegationsPage() {
         goal: data.goal,
         context: data.context || undefined,
         autoExecute: true,
+        isRecurring: isScheduled,
+        scheduleCron: isScheduled ? selectedCron : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
       setCreateOpen(false);
       reset();
-      toast({ title: "Delegation created", description: "Manager agent is planning and executing..." });
+      setIsScheduled(false);
+      setSelectedCron("");
+      toast({
+        title: isScheduled ? "Scheduled delegation created" : "Delegation created",
+        description: isScheduled ? "Will run on schedule automatically" : "Manager agent is planning and executing...",
+      });
     },
   });
 
@@ -561,6 +591,48 @@ export default function DelegationsPage() {
                 />
               </div>
 
+              {/* Schedule Toggle */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 rounded-lg border border-border bg-secondary/20 p-3 cursor-pointer hover:bg-secondary/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={isScheduled}
+                    onChange={(e) => {
+                      setIsScheduled(e.target.checked);
+                      if (!e.target.checked) setSelectedCron("");
+                    }}
+                    className="h-4 w-4 rounded border-border accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                      <Repeat className="h-3.5 w-3.5 text-primary" />
+                      Schedule recurring run
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically re-run this delegation on a schedule
+                    </p>
+                  </div>
+                </label>
+                {isScheduled && (
+                  <div className="flex flex-wrap gap-1.5 pl-1">
+                    {schedulePresets.map((p) => (
+                      <button
+                        key={p.cron}
+                        type="button"
+                        onClick={() => setSelectedCron(p.cron)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                          selectedCron === p.cron
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -604,14 +676,26 @@ export default function DelegationsPage() {
             </button>
           ))}
         </div>
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search goals or managers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative w-full sm:w-56">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search goals or managers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="cost">Highest cost</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -702,6 +786,17 @@ export default function DelegationsPage() {
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {formatCost(delegation.totalCostUsd)}
+                              </span>
+                            </>
+                          )}
+                          {delegation.isRecurring && (
+                            <>
+                              <span className="text-xs text-muted-foreground">
+                                ·
+                              </span>
+                              <span className="text-xs text-primary flex items-center gap-0.5">
+                                <Repeat className="h-3 w-3" />
+                                Scheduled
                               </span>
                             </>
                           )}
@@ -1040,18 +1135,29 @@ function SubtaskCard({
         </div>
 
         {subtask.output && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => navigator.clipboard.writeText(subtask.output!)}
+              title="Copy output"
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </div>
         )}
       </div>
 
