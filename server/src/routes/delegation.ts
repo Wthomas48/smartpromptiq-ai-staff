@@ -105,6 +105,10 @@ router.get("/", async (req: Request, res: Response) => {
       where,
       include: {
         manager: { select: { id: true, name: true, roleType: true } },
+        subtasks: {
+          select: { id: true, status: true, title: true },
+          orderBy: { orderIndex: "asc" },
+        },
         _count: { select: { subtasks: true } },
       },
       orderBy: { createdAt: "desc" },

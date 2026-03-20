@@ -45,6 +45,16 @@ interface Workflow {
   triggerType: string;
 }
 
+interface StaffDelegation {
+  id: string;
+  goal: string;
+  status: string;
+  totalCostUsd: number;
+  createdAt: string;
+  manager: { id: string; name: string };
+  _count?: { subtasks: number };
+}
+
 interface MessageThread {
   id: number;
   title: string;
@@ -84,6 +94,15 @@ export default function AIStaffDetailPage() {
     queryFn: () =>
       apiGet<MessageThread[]>(
         `/api/workspaces/${wsId}/messages/threads?aiStaffId=${staffId}`
+      ),
+    enabled: !!wsId && !!staffId,
+  });
+
+  const { data: delegationsData } = useQuery({
+    queryKey: ["staff-delegations", wsId, staffId],
+    queryFn: () =>
+      apiGet<StaffDelegation[]>(
+        `/api/workspaces/${wsId}/delegations?managerId=${staffId}`
       ),
     enabled: !!wsId && !!staffId,
   });
@@ -150,6 +169,7 @@ export default function AIStaffDetailPage() {
 
   const workflowList = Array.isArray(workflows) ? workflows : [];
   const threadList = Array.isArray(threads) ? threads : [];
+  const delegationList = Array.isArray(delegationsData) ? delegationsData : [];
 
   if (isLoading) {
     return (
@@ -271,6 +291,11 @@ export default function AIStaffDetailPage() {
           <TabsTrigger value="messages">
             Messages ({threadList.length})
           </TabsTrigger>
+          {(staff.isManager || delegationList.length > 0) && (
+            <TabsTrigger value="delegations">
+              Delegations ({delegationList.length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Overview tab */}
@@ -497,6 +522,59 @@ export default function AIStaffDetailPage() {
                       </div>
                     </Link>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Delegations tab */}
+        <TabsContent value="delegations">
+          <Card>
+            <CardContent className="p-6">
+              {delegationList.length === 0 ? (
+                <div className="text-center py-8">
+                  <Network className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No delegations managed by this staff member.
+                  </p>
+                  <Link href="/delegations">
+                    <Button variant="outline" size="sm" className="mt-3 gap-1">
+                      <Network className="h-3.5 w-3.5" />
+                      Go to Delegations
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {delegationList.map((d) => {
+                    const statusStyle =
+                      d.status === "COMPLETED"
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        : d.status === "FAILED"
+                          ? "bg-red-500/10 text-red-400 border-red-500/30"
+                          : d.status === "EXECUTING" || d.status === "REVIEWING"
+                            ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                            : "bg-amber-500/10 text-amber-400 border-amber-500/30";
+                    return (
+                      <Link key={d.id} href="/delegations">
+                        <div className="flex items-center justify-between rounded-lg border border-border p-4 cursor-pointer hover:bg-secondary transition-colors">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {d.goal.length > 60 ? d.goal.slice(0, 60) + "..." : d.goal}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {d._count?.subtasks || 0} subtasks · {new Date(d.createdAt).toLocaleDateString()}
+                              {d.totalCostUsd > 0 && ` · $${d.totalCostUsd.toFixed(4)}`}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className={`ml-2 ${statusStyle}`}>
+                            {d.status}
+                          </Badge>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

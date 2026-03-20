@@ -70,6 +70,12 @@ interface DelegationSubtask {
   assignee: { id: string; name: string; roleType: string } | null;
 }
 
+interface SubtaskSummary {
+  id: string;
+  status: string;
+  title: string;
+}
+
 interface Delegation {
   id: string;
   goal: string;
@@ -82,7 +88,7 @@ interface Delegation {
   startedAt: string | null;
   finishedAt: string | null;
   manager: { id: string; name: string; roleType: string };
-  subtasks?: DelegationSubtask[];
+  subtasks?: (DelegationSubtask | SubtaskSummary)[];
   _count?: { subtasks: number };
 }
 
@@ -592,6 +598,11 @@ export default function DelegationsPage() {
                     </div>
                   </div>
 
+                  {/* Progress Bar */}
+                  {delegation.subtasks && delegation.subtasks.length > 0 && delegation.status !== "PLANNING" && (
+                    <ProgressBar subtasks={delegation.subtasks} />
+                  )}
+
                   {/* Expanded: show final output preview */}
                   {isExpanded && delegation.finalOutput && (
                     <div className="mt-3 rounded-md bg-secondary/50 border border-border p-3">
@@ -677,7 +688,7 @@ export default function DelegationsPage() {
                       {delegationDetail.subtasks.map((subtask, idx) => (
                         <SubtaskCard
                           key={subtask.id}
-                          subtask={subtask}
+                          subtask={subtask as DelegationSubtask}
                           index={idx}
                         />
                       ))}
@@ -707,6 +718,49 @@ export default function DelegationsPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ─── Progress Bar ───────────────────────────────────────────────────────────
+
+function ProgressBar({ subtasks }: { subtasks: Array<{ status: string; title: string }> }) {
+  const total = subtasks.length;
+  const completed = subtasks.filter((s) => s.status === "COMPLETED").length;
+  const failed = subtasks.filter((s) => s.status === "FAILED").length;
+  const running = subtasks.filter((s) => s.status === "RUNNING").length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  return (
+    <div className="mt-3 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-muted-foreground">
+          {completed}/{total} subtasks complete
+          {running > 0 && ` · ${running} running`}
+          {failed > 0 && ` · ${failed} failed`}
+        </span>
+        <span className="text-[11px] font-medium text-muted-foreground">{pct}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-secondary overflow-hidden flex">
+        {completed > 0 && (
+          <div
+            className="h-full bg-emerald-500 transition-all duration-500"
+            style={{ width: `${(completed / total) * 100}%` }}
+          />
+        )}
+        {running > 0 && (
+          <div
+            className="h-full bg-blue-500 animate-pulse transition-all duration-500"
+            style={{ width: `${(running / total) * 100}%` }}
+          />
+        )}
+        {failed > 0 && (
+          <div
+            className="h-full bg-red-500 transition-all duration-500"
+            style={{ width: `${(failed / total) * 100}%` }}
+          />
+        )}
+      </div>
     </div>
   );
 }

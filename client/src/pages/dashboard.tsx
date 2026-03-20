@@ -58,6 +58,7 @@ interface AnalyticsOverview {
   workflows: { total: number; active: number };
   tasks: { total: number; completed: number; failed: number; pendingApprovals: number; successRate: number };
   conversations: { threads: number; messages: number };
+  delegations?: { total: number; completed: number; active: number; failed: number; successRate: number };
 }
 
 interface AnalyticsUsage {
@@ -187,6 +188,15 @@ const STAT_CONFIGS = [
     iconBg: "bg-orange-500/10",
     iconColor: "text-orange-400",
     borderColor: "border-l-orange-500",
+  },
+  {
+    key: "delegations",
+    title: "Delegations",
+    icon: Network,
+    bgGlow: "bg-violet-500/5",
+    iconBg: "bg-violet-500/10",
+    iconColor: "text-violet-400",
+    borderColor: "border-l-violet-500",
   },
 ] as const;
 
@@ -335,6 +345,10 @@ export default function DashboardPage() {
       value: overview?.tasks.completed ?? 0,
       sub: overview ? `${overview.tasks.successRate}% success` : undefined,
     },
+    delegations: {
+      value: overview?.delegations?.total ?? 0,
+      sub: overview?.delegations ? `${overview.delegations.completed} completed` : undefined,
+    },
   };
 
   /* ── Render ────────────────────────────────────────────────────── */
@@ -369,9 +383,9 @@ export default function DashboardPage() {
       </div>
 
       {/* ─── 2. Stats Row ───────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {isLoading
-          ? [1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)
+          ? [1, 2, 3, 4, 5].map((i) => <StatCardSkeleton key={i} />)
           : STAT_CONFIGS.map((stat) => {
               const Icon = stat.icon;
               const data = statValues[stat.key];
