@@ -395,6 +395,7 @@ model Delegation {
   manager   AIStaff            @relation("ManagedDelegations", fields: [managerId], references: [id], onDelete: Cascade)
   createdBy User               @relation(fields: [createdByUserId], references: [id])
   subtasks  DelegationSubtask[]
+  history   DelegationHistory[]
 }
 
 model DelegationSubtask {
@@ -416,4 +417,19 @@ model DelegationSubtask {
 
   delegation Delegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
   assignee   AIStaff?   @relation("AssignedSubtasks", fields: [assigneeId], references: [id], onDelete: SetNull)
+}
+
+model DelegationHistory {
+  id              String   @id @default(uuid())
+  delegationId    String
+  runNumber       Int
+  status          String
+  finalOutput     String?
+  totalTokensUsed Int      @default(0)
+  totalCostUsd    Float    @default(0)
+  durationMs      Int      @default(0)
+  subtaskSummary  Json     @default("[]")
+  createdAt       DateTime @default(now())
+
+  delegation Delegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
 }

@@ -364,6 +364,29 @@ router.post("/:delegationId/rerun", async (req: Request, res: Response) => {
       return;
     }
 
+    // Save current run to history before resetting
+    const subtasks = await prisma.delegationSubtask.findMany({
+      where: { delegationId },
+      select: { title: true, status: true, tokensUsed: true, costUsd: true },
+    });
+
+    const durationMs = delegation.startedAt && delegation.finishedAt
+      ? new Date(delegation.finishedAt).getTime() - new Date(delegation.startedAt).getTime()
+      : 0;
+
+    await prisma.delegationHistory.create({
+      data: {
+        delegationId,
+        runNumber: delegation.runCount || 1,
+        status: delegation.status,
+        finalOutput: delegation.finalOutput,
+        totalTokensUsed: delegation.totalTokensUsed,
+        totalCostUsd: delegation.totalCostUsd,
+        durationMs,
+        subtaskSummary: subtasks as any,
+      },
+    });
+
     // Reset delegation state
     await prisma.delegationSubtask.deleteMany({ where: { delegationId } });
     await prisma.delegation.update({
@@ -376,6 +399,7 @@ router.post("/:delegationId/rerun", async (req: Request, res: Response) => {
         totalCostUsd: 0,
         startedAt: null,
         finishedAt: null,
+        runCount: { increment: 1 },
       },
     });
 
@@ -493,6 +517,34 @@ router.get("/:delegationId/subtasks", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("List subtasks error:", err);
     res.status(500).json({ error: "Failed to list subtasks" });
+  }
+});
+
+// ─── GET /:delegationId/history — Get run history ───────────────────────────
+
+router.get("/:delegationId/history", async (req: Request, res: Response) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const { delegationId } = req.params;
+
+    const delegation = await prisma.delegation.findFirst({
+      where: { id: delegationId, workspaceId },
+    });
+
+    if (!delegation) {
+      res.status(404).json({ error: "Delegation not found" });
+      return;
+    }
+
+    const history = await prisma.delegationHistory.findMany({
+      where: { delegationId },
+      orderBy: { runNumber: "desc" },
+    });
+
+    res.json(history);
+  } catch (err) {
+    console.error("Get delegation history error:", err);
+    res.status(500).json({ error: "Failed to get delegation history" });
   }
 });
 

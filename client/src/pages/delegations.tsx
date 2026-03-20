@@ -79,6 +79,17 @@ interface DelegationSubtask {
   assignee: { id: string; name: string; roleType: string } | null;
 }
 
+interface RunHistory {
+  id: string;
+  runNumber: number;
+  status: string;
+  finalOutput: string | null;
+  totalTokensUsed: number;
+  totalCostUsd: number;
+  durationMs: number;
+  createdAt: string;
+}
+
 interface SubtaskSummary {
   id: string;
   status: string;
@@ -459,6 +470,15 @@ export default function DelegationsPage() {
       ),
     enabled: !!wsId && !!selectedDelegation?.id && detailOpen,
     refetchInterval: selectedDelegation?.status === "EXECUTING" || selectedDelegation?.status === "REVIEWING" || selectedDelegation?.status === "PLANNING" ? 3000 : false,
+  });
+
+  const { data: runHistory } = useQuery({
+    queryKey: ["delegation-history", wsId, selectedDelegation?.id],
+    queryFn: () =>
+      apiGet<RunHistory[]>(
+        `/api/workspaces/${wsId}/delegations/${selectedDelegation?.id}/history`
+      ),
+    enabled: !!wsId && !!selectedDelegation?.id && detailOpen,
   });
 
   // ── Handlers ────────────────────────────────────────────────────────────
@@ -1212,6 +1232,41 @@ export default function DelegationsPage() {
                     <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed">
                       {delegationDetail.finalOutput}
                     </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Run History */}
+              {runHistory && runHistory.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                    Run History ({runHistory.length} previous)
+                  </h3>
+                  <div className="space-y-1.5">
+                    {runHistory.map((run) => (
+                      <div
+                        key={run.id}
+                        className="rounded-md border border-border bg-secondary/20 p-2.5 flex items-center justify-between"
+                      >
+                        <div>
+                          <p className="text-xs font-medium text-foreground">
+                            Run #{run.runNumber}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(run.createdAt).toLocaleString()}
+                            {run.durationMs > 0 && ` · ${(run.durationMs / 1000).toFixed(0)}s`}
+                            {run.totalCostUsd > 0 && ` · ${formatCost(run.totalCostUsd)}`}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${statusColor(run.status)}`}
+                        >
+                          {run.status}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
