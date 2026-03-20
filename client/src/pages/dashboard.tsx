@@ -21,6 +21,8 @@ import {
   ChevronRight,
   DollarSign,
   BarChart3,
+  Network,
+  Target,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,6 +87,16 @@ interface ActivityItem {
   staffRole: string;
   description: string;
   status?: string;
+}
+
+interface DelegationItem {
+  id: string;
+  goal: string;
+  status: string;
+  totalCostUsd: number;
+  createdAt: string;
+  manager: { id: string; name: string; roleType: string };
+  _count?: { subtasks: number };
 }
 
 /* ─── Helpers ──────────────────────────────────────────────────────── */
@@ -191,8 +203,8 @@ const ACTIVITY_COLORS = {
 const QUICK_ACTIONS = [
   { label: "New Staff", icon: Plus, href: "/ai-staff/create", color: "from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30" },
   { label: "New Workflow", icon: Workflow, href: "/workflows", color: "from-emerald-500/20 to-green-500/20 hover:from-emerald-500/30 hover:to-green-500/30" },
+  { label: "Delegate", icon: Network, href: "/delegations", color: "from-violet-500/20 to-purple-500/20 hover:from-violet-500/30 hover:to-purple-500/30" },
   { label: "Messages", icon: Send, href: "/messages", color: "from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30" },
-  { label: "Integrations", icon: Plug, href: "/integrations", color: "from-orange-500/20 to-amber-500/20 hover:from-orange-500/30 hover:to-amber-500/30" },
 ] as const;
 
 /* ─── Skeleton Components ─────────────────────────────────────────── */
@@ -284,6 +296,15 @@ export default function DashboardPage() {
     enabled: !!wsId,
     refetchInterval: 15000,
   });
+
+  const { data: delegationsData, isLoading: delegationsLoading } = useQuery({
+    queryKey: ["delegations", wsId],
+    queryFn: () => apiGet<DelegationItem[]>(`/api/workspaces/${wsId}/delegations`),
+    enabled: !!wsId,
+    refetchInterval: 15000,
+  });
+
+  const recentDelegations = (delegationsData || []).slice(0, 4);
 
   const staffList = staffData?.staff || [];
   const workflowList = workflowsData?.workflows || [];
@@ -594,6 +615,74 @@ export default function DashboardPage() {
               </div>
             </Link>
           )}
+
+          {/* Recent Delegations */}
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Network className="h-4 w-4 text-violet-400" />
+                Recent Delegations
+              </h3>
+              <Link href="/delegations">
+                <span className="text-[11px] text-white/40 hover:text-violet-400 transition-colors duration-200 flex items-center gap-1 cursor-pointer">
+                  View All
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </span>
+              </Link>
+            </div>
+            <div className="p-3">
+              {delegationsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="p-3 rounded-lg space-y-2">
+                      <Skeleton className="h-4 w-48 bg-white/[0.06]" />
+                      <Skeleton className="h-3 w-24 bg-white/[0.06]" />
+                    </div>
+                  ))}
+                </div>
+              ) : recentDelegations.length === 0 ? (
+                <div className="py-8 text-center">
+                  <Target className="h-7 w-7 text-white/10 mx-auto mb-2" />
+                  <p className="text-xs text-white/30">No delegations yet</p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {recentDelegations.map((d) => {
+                    const statusStyle =
+                      d.status === "COMPLETED"
+                        ? "bg-emerald-400/10 text-emerald-400"
+                        : d.status === "FAILED"
+                          ? "bg-red-400/10 text-red-400"
+                          : d.status === "EXECUTING" || d.status === "REVIEWING"
+                            ? "bg-blue-400/10 text-blue-400"
+                            : "bg-amber-400/10 text-amber-400";
+                    return (
+                      <Link key={d.id} href="/delegations">
+                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.03] transition-colors duration-200 cursor-pointer">
+                          <div className="h-8 w-8 rounded-lg bg-violet-400/10 flex items-center justify-center flex-shrink-0">
+                            <Network className="h-4 w-4 text-violet-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white/70 truncate">
+                              {d.goal.length > 40 ? d.goal.slice(0, 40) + "..." : d.goal}
+                            </p>
+                            <p className="text-[11px] text-white/30">
+                              {d.manager.name} &middot; {timeAgo(d.createdAt)}
+                            </p>
+                          </div>
+                          <span
+                            className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusStyle}`}
+                          >
+                            {d.status}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Scheduled Workflows */}
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
