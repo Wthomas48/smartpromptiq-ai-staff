@@ -157,6 +157,30 @@ router.get("/usage", async (req: Request, res: Response) => {
       .map(([date, data]) => ({ date, ...data }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    // Delegation-specific usage
+    const delegationUsage = await prisma.usageLog.aggregate({
+      where: {
+        workspaceId,
+        createdAt: { gte: since },
+        endpoint: { startsWith: "delegation" },
+      },
+      _sum: {
+        promptTokens: true,
+        completionTokens: true,
+        totalTokens: true,
+        costUsd: true,
+      },
+      _count: true,
+    });
+
+    // Usage by endpoint type
+    const byEndpoint = await prisma.usageLog.groupBy({
+      by: ["endpoint"],
+      where: { workspaceId, createdAt: { gte: since } },
+      _sum: { totalTokens: true, costUsd: true },
+      _count: true,
+    });
+
     res.json({
       period: { days: daysNum, since: since.toISOString() },
       totals: {
@@ -187,6 +211,17 @@ router.get("/usage", async (req: Request, res: Response) => {
         requests: s._count,
       })),
       daily,
+      delegationUsage: {
+        totalTokens: delegationUsage._sum.totalTokens || 0,
+        costUsd: Math.round((delegationUsage._sum.costUsd || 0) * 10000) / 10000,
+        requests: delegationUsage._count,
+      },
+      byEndpoint: byEndpoint.map((e) => ({
+        endpoint: e.endpoint,
+        totalTokens: e._sum.totalTokens || 0,
+        costUsd: Math.round((e._sum.costUsd || 0) * 10000) / 10000,
+        requests: e._count,
+      })),
     });
   } catch (err) {
     console.error("Analytics usage error:", err);

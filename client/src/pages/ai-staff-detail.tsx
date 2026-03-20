@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Edit2, Save, X, Trash2, Network } from "lucide-react";
+import { ArrowLeft, Edit2, Save, X, Trash2, Network, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,11 @@ interface AIStaffDetail {
   status: string;
   description?: string;
   avatarImageUrl?: string;
+  modelProvider?: string;
+  modelName?: string;
+  temperature?: number;
+  maxTokens?: number;
+  systemPrompt?: string;
   modelConfig?: Record<string, unknown>;
   isManager?: boolean;
   createdAt: string;
@@ -434,6 +439,41 @@ export default function AIStaffDetailPage() {
                       </div>
                     </>
                   )}
+
+                  {/* AI Model Info */}
+                  <Separator />
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <Brain className="h-3 w-3" />
+                      AI Model Configuration
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-md bg-secondary/30 border border-border p-2.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Provider</p>
+                        <p className="text-sm font-medium text-foreground capitalize">
+                          {staff.modelProvider || "openai"}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-secondary/30 border border-border p-2.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Model</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {staff.modelName || "gpt-4o-mini"}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-secondary/30 border border-border p-2.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Temperature</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {staff.temperature ?? 0.7}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-secondary/30 border border-border p-2.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Max Tokens</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {staff.maxTokens ?? 2048}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
                   {staff.modelConfig && (
                     <>

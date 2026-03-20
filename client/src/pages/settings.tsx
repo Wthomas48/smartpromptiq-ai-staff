@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, CreditCard, Building2, Check } from "lucide-react";
+import { User, CreditCard, Building2, Check, Brain, Eye, EyeOff, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
 interface Subscription {
   id: number;
@@ -183,6 +187,9 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* AI Providers Section */}
+      <AIProvidersSection />
+
       {/* Billing Section */}
       <Card>
         <CardHeader>
@@ -314,5 +321,126 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─── AI Providers Section ───────────────────────────────────────────────────
+
+function AIProvidersSection() {
+  const [showOpenAI, setShowOpenAI] = useState(false);
+  const [showAnthropic, setShowAnthropic] = useState(false);
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [anthropicKey, setAnthropicKey] = useState("");
+  const [defaultProvider, setDefaultProvider] = useState("openai");
+  const [defaultModel, setDefaultModel] = useState("gpt-4o-mini");
+
+  const providers = [
+    {
+      id: "openai",
+      name: "OpenAI",
+      description: "GPT-4o, GPT-4o-mini, GPT-4 Turbo",
+      color: "text-emerald-400",
+      bgColor: "bg-emerald-500/10",
+      borderColor: "border-emerald-500/30",
+      keyValue: openaiKey,
+      setKey: setOpenaiKey,
+      show: showOpenAI,
+      setShow: setShowOpenAI,
+      placeholder: "sk-...",
+      models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+    },
+    {
+      id: "anthropic",
+      name: "Anthropic",
+      description: "Claude Opus, Sonnet, Haiku",
+      color: "text-orange-400",
+      bgColor: "bg-orange-500/10",
+      borderColor: "border-orange-500/30",
+      keyValue: anthropicKey,
+      setKey: setAnthropicKey,
+      show: showAnthropic,
+      setShow: setShowAnthropic,
+      placeholder: "sk-ant-...",
+      models: ["claude-sonnet-4-20250514", "claude-opus-4-20250514", "claude-haiku-4-5-20251001"],
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Brain className="h-5 w-5 text-muted-foreground" />
+          <CardTitle className="text-lg">AI Providers</CardTitle>
+        </div>
+        <CardDescription>
+          Configure your AI provider API keys. Keys are stored in your server environment variables.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+          <p className="text-xs text-amber-300">
+            API keys are configured via server environment variables (OPENAI_API_KEY, ANTHROPIC_API_KEY).
+            Update them in your Railway dashboard or .env file, then restart the server.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {providers.map((provider) => (
+            <div
+              key={provider.id}
+              className={`rounded-lg border ${provider.borderColor} p-4`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className={`h-8 w-8 rounded-lg ${provider.bgColor} flex items-center justify-center`}>
+                    <Brain className={`h-4 w-4 ${provider.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{provider.name}</p>
+                    <p className="text-xs text-muted-foreground">{provider.description}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-3">
+                <Label className="text-xs text-muted-foreground">Environment Variable</Label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-md bg-secondary/50 border border-border text-xs font-mono text-foreground">
+                    {provider.id === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"}
+                  </code>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground mb-1.5">Available Models</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {provider.models.map((model) => (
+                    <Badge key={model} variant="secondary" className="text-[10px]">
+                      {model}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <Separator />
+
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Default provider and model can be set via environment variables:
+          </p>
+          <div className="space-y-1.5">
+            <code className="block px-3 py-2 rounded-md bg-secondary/50 border border-border text-xs font-mono text-foreground">
+              DEFAULT_AI_PROVIDER=openai
+            </code>
+            <code className="block px-3 py-2 rounded-md bg-secondary/50 border border-border text-xs font-mono text-foreground">
+              DEFAULT_AI_MODEL=gpt-4o-mini
+            </code>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
