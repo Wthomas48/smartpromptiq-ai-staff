@@ -19,6 +19,7 @@ import CreateStaffPage from "@/pages/create-staff";
 import LandingPage from "@/pages/landing";
 import DelegationsPage from "@/pages/delegations";
 import AuditLogsPage from "@/pages/audit-logs";
+import APIDocsPage from "@/pages/api-docs";
 import NotFoundPage from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -175,6 +176,12 @@ function AppRoutes() {
       <Route path="/integrations">
         <ProtectedRoute>
           <IntegrationsPage />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/api-docs">
+        <ProtectedRoute>
+          <APIDocsPage />
         </ProtectedRoute>
       </Route>
 

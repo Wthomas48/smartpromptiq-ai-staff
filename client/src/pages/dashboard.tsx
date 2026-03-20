@@ -443,7 +443,7 @@ export default function DashboardPage() {
       )}
 
       {/* ─── 2. Stats Row ───────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         {isLoading
           ? [1, 2, 3, 4, 5].map((i) => <StatCardSkeleton key={i} />)
           : STAT_CONFIGS.map((stat) => {

@@ -9,6 +9,7 @@ import {
   Network,
   CheckSquare,
   ScrollText,
+  FileCode,
   MessageSquare,
   Plug,
   Settings,
@@ -33,6 +34,7 @@ const navItems = [
   { path: "/tasks", label: "Tasks", icon: CheckSquare },
   { path: "/messages", label: "Messages", icon: MessageSquare },
   { path: "/integrations", label: "Integrations", icon: Plug },
+  { path: "/api-docs", label: "API Docs", icon: FileCode },
   { path: "/audit-logs", label: "Audit Logs", icon: ScrollText },
   { path: "/settings", label: "Settings", icon: Settings },
 ];

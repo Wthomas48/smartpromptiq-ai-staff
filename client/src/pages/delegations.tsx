@@ -828,12 +828,12 @@ export default function DelegationsPage() {
 
       {/* Filter Tabs + Search */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="flex gap-1 rounded-lg bg-card border border-border p-1 w-fit">
+        <div className="flex gap-1 rounded-lg bg-card border border-border p-1 w-fit overflow-x-auto max-w-full">
           {filters.map((f) => (
             <button
               key={f.key}
               onClick={() => setActiveFilter(f.key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                 activeFilter === f.key
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
@@ -1119,7 +1119,7 @@ export default function DelegationsPage() {
 
       {/* Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           {detailLoading ? (
             <div className="space-y-4 py-8">
               <Skeleton className="h-6 w-3/4" />
