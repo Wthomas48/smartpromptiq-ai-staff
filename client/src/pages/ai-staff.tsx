@@ -1,13 +1,14 @@
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Users, Network } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Users, Network, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPut } from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
 interface AIStaff {
   id: number;
@@ -24,6 +25,18 @@ export default function AIStaffPage() {
   const { currentWorkspace } = useWorkspace();
   const wsId = currentWorkspace?.id;
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      apiPut(`/api/workspaces/${wsId}/ai-staff/${id}`, {
+        status: status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai-staff", wsId] });
+      toast({ title: "Staff status updated" });
+    },
+  });
 
   const { data: aiStaff, isLoading } = useQuery({
     queryKey: ["ai-staff", wsId],
@@ -105,14 +118,31 @@ export default function AIStaffPage() {
                         <h3 className="text-sm font-semibold text-foreground truncate">
                           {staff.name}
                         </h3>
-                        <Badge
-                          variant={
-                            staff.status === "ACTIVE" ? "default" : "secondary"
-                          }
-                          className="text-xs flex-shrink-0"
-                        >
-                          {staff.status}
-                        </Badge>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Badge
+                            variant={
+                              staff.status === "ACTIVE" ? "default" : "secondary"
+                            }
+                            className="text-xs"
+                          >
+                            {staff.status}
+                          </Badge>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleStatusMutation.mutate({ id: staff.id, status: staff.status });
+                            }}
+                            className={`h-6 w-6 rounded-md flex items-center justify-center transition-colors ${
+                              staff.status === "ACTIVE"
+                                ? "text-emerald-400 hover:bg-emerald-500/10"
+                                : "text-muted-foreground hover:bg-secondary"
+                            }`}
+                            title={staff.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                          >
+                            <Power className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <p className="text-xs text-muted-foreground">

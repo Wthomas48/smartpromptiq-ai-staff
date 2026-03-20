@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, CreditCard, Building2, Check, Brain, Eye, EyeOff, Save } from "lucide-react";
+import { User, CreditCard, Building2, Check, Brain, Eye, EyeOff, Save, Users, Trash2, Plus, Edit2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
-import { apiGet, apiPost, apiPut } from "@/lib/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 interface Subscription {
@@ -155,37 +155,10 @@ export default function SettingsPage() {
       </Card>
 
       {/* Workspace Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-lg">Workspace</CardTitle>
-          </div>
-          <CardDescription>
-            Current workspace configuration
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">
-                Workspace Name
-              </p>
-              <p className="text-sm text-foreground font-medium">
-                {currentWorkspace?.name || "No workspace selected"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">
-                Workspace ID
-              </p>
-              <p className="text-sm text-foreground font-mono">
-                {currentWorkspace?.id || "---"}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <WorkspaceSection />
+
+      {/* Members Section */}
+      <MembersSection />
 
       {/* AI Providers Section */}
       <AIProvidersSection />
@@ -321,6 +294,203 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─── Workspace Section ──────────────────────────────────────────────────────
+
+function WorkspaceSection() {
+  const { currentWorkspace, refreshWorkspaces } = useWorkspace();
+  const wsId = currentWorkspace?.id;
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+
+  const updateMutation = useMutation({
+    mutationFn: (data: { name: string }) =>
+      apiPut(`/api/workspaces/${wsId}`, data),
+    onSuccess: () => {
+      refreshWorkspaces();
+      setEditing(false);
+      toast({ title: "Workspace updated" });
+    },
+  });
+
+  const startEdit = () => {
+    setEditName(currentWorkspace?.name || "");
+    setEditing(true);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">Workspace</CardTitle>
+          </div>
+          {!editing && (
+            <Button variant="outline" size="sm" onClick={startEdit} className="gap-1">
+              <Edit2 className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+        <CardDescription>Current workspace configuration</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {editing ? (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Workspace Name</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-9"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => updateMutation.mutate({ name: editName })}
+                disabled={updateMutation.isPending || !editName.trim()}
+                className="gap-1"
+              >
+                <Save className="h-3.5 w-3.5" />
+                {updateMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Workspace Name</p>
+              <p className="text-sm text-foreground font-medium">
+                {currentWorkspace?.name || "No workspace selected"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Workspace ID</p>
+              <p className="text-sm text-foreground font-mono text-xs">
+                {currentWorkspace?.id || "---"}
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Members Section ────────────────────────────────────────────────────────
+
+interface Member {
+  id: string;
+  userId: string;
+  role: string;
+  createdAt: string;
+  user: { id: string; name: string; email: string };
+}
+
+function MembersSection() {
+  const { currentWorkspace } = useWorkspace();
+  const wsId = currentWorkspace?.id;
+  const queryClient = useQueryClient();
+  const [addEmail, setAddEmail] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  const { data: membersData, isLoading } = useQuery({
+    queryKey: ["workspace-members", wsId],
+    queryFn: () =>
+      apiGet<{ members: Member[] }>(`/api/workspaces/${wsId}/members`),
+    enabled: !!wsId,
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (memberId: string) =>
+      apiDelete(`/api/workspaces/${wsId}/members/${memberId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace-members", wsId] });
+      toast({ title: "Member removed" });
+    },
+  });
+
+  const members = membersData?.members || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">Team Members</CardTitle>
+          </div>
+          <Badge variant="secondary">{members.length} members</Badge>
+        </div>
+        <CardDescription>People with access to this workspace</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : members.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No members found.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {members.map((member) => (
+              <div
+                key={member.id}
+                className="flex items-center justify-between rounded-lg border border-border p-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                    {member.user.name?.charAt(0)?.toUpperCase() || "?"}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {member.user.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {member.user.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={member.role === "WORKSPACE_OWNER" ? "default" : "secondary"}
+                    className="text-[10px]"
+                  >
+                    {member.role === "WORKSPACE_OWNER" ? "Owner" : "Member"}
+                  </Badge>
+                  {member.role !== "WORKSPACE_OWNER" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400"
+                      onClick={() => {
+                        if (window.confirm(`Remove ${member.user.name} from this workspace?`)) {
+                          removeMutation.mutate(member.id);
+                        }
+                      }}
+                      disabled={removeMutation.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
