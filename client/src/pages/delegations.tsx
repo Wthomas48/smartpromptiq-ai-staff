@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -210,6 +211,32 @@ export default function DelegationsPage() {
   });
 
   const delegations = delegationsData || [];
+
+  // Track status changes for toast notifications
+  const prevStatusRef = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    const prevMap = prevStatusRef.current;
+    for (const d of delegations) {
+      const prev = prevMap.get(d.id);
+      if (prev && prev !== d.status) {
+        if (d.status === "COMPLETED") {
+          toast({
+            title: "Delegation completed",
+            description: d.goal.length > 60 ? d.goal.slice(0, 60) + "..." : d.goal,
+          });
+        } else if (d.status === "FAILED") {
+          toast({
+            title: "Delegation failed",
+            description: d.goal.length > 60 ? d.goal.slice(0, 60) + "..." : d.goal,
+            variant: "destructive",
+          });
+        }
+      }
+    }
+    const newMap = new Map<string, string>();
+    for (const d of delegations) newMap.set(d.id, d.status);
+    prevStatusRef.current = newMap;
+  }, [delegations]);
   const staff = staffData || [];
   const managers = staff.filter((s) => s.isManager && s.status === "ACTIVE");
 
@@ -247,6 +274,7 @@ export default function DelegationsPage() {
       queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
       setCreateOpen(false);
       reset();
+      toast({ title: "Delegation created", description: "Manager agent is planning and executing..." });
     },
   });
 
@@ -276,6 +304,7 @@ export default function DelegationsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
+      toast({ title: "Delegation cloned", description: "Running again with the same goal..." });
     },
   });
 
