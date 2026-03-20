@@ -233,6 +233,20 @@ export default function DelegationsPage() {
   const queryClient = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
+
+  // Keyboard shortcut: 'n' to open create dialog
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return;
+        e.preventDefault();
+        setCreateOpen(true);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedDelegation, setSelectedDelegation] = useState<Delegation | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -482,6 +496,9 @@ export default function DelegationsPage() {
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
               New Delegation
+              <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-border bg-secondary px-1.5 text-[10px] font-mono text-muted-foreground ml-1">
+                N
+              </kbd>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
