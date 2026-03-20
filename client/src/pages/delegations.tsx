@@ -472,6 +472,15 @@ export default function DelegationsPage() {
     refetchInterval: selectedDelegation?.status === "EXECUTING" || selectedDelegation?.status === "REVIEWING" || selectedDelegation?.status === "PLANNING" ? 3000 : false,
   });
 
+  const { data: agentMessages } = useQuery({
+    queryKey: ["delegation-messages", wsId, selectedDelegation?.id],
+    queryFn: () =>
+      apiGet<Array<{ id: string; senderName: string; senderRole: string; content: string; phase: string; createdAt: string }>>(
+        `/api/workspaces/${wsId}/delegations/${selectedDelegation?.id}/messages`
+      ),
+    enabled: !!wsId && !!selectedDelegation?.id && detailOpen,
+  });
+
   const { data: runHistory } = useQuery({
     queryKey: ["delegation-history", wsId, selectedDelegation?.id],
     queryFn: () =>
@@ -1232,6 +1241,32 @@ export default function DelegationsPage() {
                     <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed">
                       {delegationDetail.finalOutput}
                     </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Agent Messages */}
+              {agentMessages && agentMessages.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Users className="h-4 w-4 text-blue-400" />
+                    Agent Activity ({agentMessages.length})
+                  </h3>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {agentMessages.map((msg) => (
+                      <div key={msg.id} className="flex items-start gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/30">
+                        <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary flex-shrink-0 mt-0.5">
+                          {msg.senderName.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs text-foreground">
+                            <span className="font-medium">{msg.senderName}</span>
+                            <span className="text-muted-foreground"> · {msg.senderRole}</span>
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">{msg.content}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

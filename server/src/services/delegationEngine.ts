@@ -108,6 +108,11 @@ export async function executeDelegation(
       totalTokens += planResult.tokensUsed;
       totalCost += planResult.costUsd;
 
+      await logDelegationMessage(
+        delegationId, delegation.manager.id, delegation.manager.name,
+        "Manager", `Decomposed goal into ${planResult.plan.length} subtasks`, "planning"
+      );
+
       // Reload subtasks after planning
       subtasks = await prisma.delegationSubtask.findMany({
         where: { delegationId },
@@ -493,6 +498,10 @@ Complete this task thoroughly and provide clear, actionable output.`;
         });
 
         await logDelegationUsage(workspaceId, agent.id, agentConfig, response, "delegation-subtask");
+        await logDelegationMessage(
+          delegationId, agent.id, agentName, agent.roleType,
+          `Completed "${subtask.title}" (${response.usage.totalTokens} tokens)`, "execution"
+        );
 
         const result: SubtaskResult = {
           subtaskId: subtask.id,
@@ -654,6 +663,23 @@ Now synthesize all results into a polished, comprehensive final deliverable. Com
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+async function logDelegationMessage(
+  delegationId: string,
+  senderId: string | null,
+  senderName: string,
+  senderRole: string,
+  content: string,
+  phase: string
+) {
+  try {
+    await prisma.delegationMessage.create({
+      data: { delegationId, senderId, senderName, senderRole, content, phase },
+    });
+  } catch {
+    // Non-fatal
+  }
+}
 
 function buildManagerLLMConfig(agent: {
   modelProvider: string;

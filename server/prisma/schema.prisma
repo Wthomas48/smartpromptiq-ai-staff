@@ -397,6 +397,7 @@ model Delegation {
   createdBy User               @relation(fields: [createdByUserId], references: [id])
   subtasks  DelegationSubtask[]
   history   DelegationHistory[]
+  messages  DelegationMessage[]
 }
 
 model DelegationSubtask {
@@ -431,6 +432,19 @@ model KnowledgeEntry {
   updatedAt   DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model DelegationMessage {
+  id           String   @id @default(uuid())
+  delegationId String
+  senderId     String?
+  senderName   String
+  senderRole   String
+  content      String
+  phase        String   @default("execution")
+  createdAt    DateTime @default(now())
+
+  delegation Delegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
 }
 
 model DelegationHistory {

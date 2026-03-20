@@ -326,4 +326,81 @@ router.get("/activity", async (req: Request, res: Response) => {
   }
 });
 
+// ─── GET /billing-usage — Usage for billing purposes ────────────────────────
+
+router.get("/billing-usage", async (req: Request, res: Response) => {
+  try {
+    const { workspaceId } = req.params;
+    const { month } = req.query;
+
+    // Default to current month
+    const now = new Date();
+    const targetMonth = month
+      ? new Date(month as string)
+      : new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 1);
+
+    const usage = await prisma.usageLog.aggregate({
+      where: {
+        workspaceId,
+        createdAt: { gte: targetMonth, lt: nextMonth },
+      },
+      _sum: {
+        promptTokens: true,
+        completionTokens: true,
+        totalTokens: true,
+        costUsd: true,
+      },
+      _count: true,
+    });
+
+    const byEndpoint = await prisma.usageLog.groupBy({
+      by: ["endpoint"],
+      where: {
+        workspaceId,
+        createdAt: { gte: targetMonth, lt: nextMonth },
+      },
+      _sum: { totalTokens: true, costUsd: true },
+      _count: true,
+    });
+
+    // Delegation cost this month
+    const delegationCost = await prisma.delegation.aggregate({
+      where: {
+        workspaceId,
+        createdAt: { gte: targetMonth, lt: nextMonth },
+      },
+      _sum: { totalCostUsd: true, totalTokensUsed: true },
+      _count: true,
+    });
+
+    res.json({
+      period: {
+        start: targetMonth.toISOString(),
+        end: nextMonth.toISOString(),
+        month: `${targetMonth.getFullYear()}-${String(targetMonth.getMonth() + 1).padStart(2, "0")}`,
+      },
+      totals: {
+        requests: usage._count,
+        totalTokens: usage._sum.totalTokens || 0,
+        costUsd: Math.round((usage._sum.costUsd || 0) * 10000) / 10000,
+      },
+      delegations: {
+        count: delegationCost._count,
+        totalTokens: delegationCost._sum.totalTokensUsed || 0,
+        costUsd: Math.round((delegationCost._sum.totalCostUsd || 0) * 10000) / 10000,
+      },
+      byEndpoint: byEndpoint.map((e) => ({
+        endpoint: e.endpoint,
+        requests: e._count,
+        totalTokens: e._sum.totalTokens || 0,
+        costUsd: Math.round((e._sum.costUsd || 0) * 10000) / 10000,
+      })),
+    });
+  } catch (err) {
+    console.error("Billing usage error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

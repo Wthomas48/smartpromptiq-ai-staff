@@ -520,6 +520,34 @@ router.get("/:delegationId/subtasks", async (req: Request, res: Response) => {
   }
 });
 
+// ─── GET /:delegationId/messages — Get delegation agent messages ─────────────
+
+router.get("/:delegationId/messages", async (req: Request, res: Response) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const { delegationId } = req.params;
+
+    const delegation = await prisma.delegation.findFirst({
+      where: { id: delegationId, workspaceId },
+    });
+
+    if (!delegation) {
+      res.status(404).json({ error: "Delegation not found" });
+      return;
+    }
+
+    const messages = await prisma.delegationMessage.findMany({
+      where: { delegationId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    res.json(messages);
+  } catch (err) {
+    console.error("Get delegation messages error:", err);
+    res.status(500).json({ error: "Failed to get messages" });
+  }
+});
+
 // ─── GET /:delegationId/history — Get run history ───────────────────────────
 
 router.get("/:delegationId/history", async (req: Request, res: Response) => {
