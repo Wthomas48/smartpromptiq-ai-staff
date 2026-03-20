@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Edit2, Save, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit2, Save, X, Trash2, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ interface AIStaffDetail {
   description?: string;
   avatarImageUrl?: string;
   modelConfig?: Record<string, unknown>;
+  isManager?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -62,6 +63,7 @@ export default function AIStaffDetailPage() {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editModelConfig, setEditModelConfig] = useState("");
+  const [editIsManager, setEditIsManager] = useState(false);
 
   const { data: staff, isLoading } = useQuery({
     queryKey: ["ai-staff-detail", wsId, staffId],
@@ -91,6 +93,7 @@ export default function AIStaffDetailPage() {
       name: string;
       description?: string;
       modelConfig?: Record<string, unknown>;
+      isManager?: boolean;
     }) => apiPut(`/api/workspaces/${wsId}/ai-staff/${staffId}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -123,6 +126,7 @@ export default function AIStaffDetailPage() {
       setEditModelConfig(
         staff.modelConfig ? JSON.stringify(staff.modelConfig, null, 2) : ""
       );
+      setEditIsManager(staff.isManager || false);
       setEditing(true);
     }
   };
@@ -140,6 +144,7 @@ export default function AIStaffDetailPage() {
       name: editName,
       description: editDescription || undefined,
       modelConfig,
+      isManager: editIsManager,
     });
   };
 
@@ -237,7 +242,15 @@ export default function AIStaffDetailPage() {
               <h1 className="text-xl font-bold text-foreground">
                 {staff.name}
               </h1>
-              <p className="text-sm text-muted-foreground">{staff.roleType}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">{staff.roleType}</p>
+                {staff.isManager && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-0.5 bg-violet-500/10 text-violet-400 border-violet-500/30">
+                    <Network className="h-2.5 w-2.5" />
+                    Manager
+                  </Badge>
+                )}
+              </div>
               {staff.description && (
                 <p className="text-sm text-muted-foreground mt-2">
                   {staff.description}
@@ -308,6 +321,26 @@ export default function AIStaffDetailPage() {
                       onChange={(e) => setEditDescription(e.target.value)}
                       rows={3}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Manager Agent</Label>
+                    <label className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-secondary/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={editIsManager}
+                        onChange={(e) => setEditIsManager(e.target.checked)}
+                        className="h-4 w-4 rounded border-border accent-primary"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                          <Network className="h-3.5 w-3.5 text-violet-400" />
+                          Enable as Manager
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Managers can decompose goals and delegate subtasks to other AI staff
+                        </p>
+                      </div>
+                    </label>
                   </div>
                   <div className="space-y-2">
                     <Label>Model Config (JSON)</Label>

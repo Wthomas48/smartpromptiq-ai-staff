@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ interface AIStaff {
   description?: string;
   avatarImageUrl?: string;
   modelConfig?: Record<string, unknown>;
+  isManager?: boolean;
 }
 
 export default function AIStaffPage() {
@@ -113,9 +114,17 @@ export default function AIStaffPage() {
                           {staff.status}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {staff.roleType}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-xs text-muted-foreground">
+                          {staff.roleType}
+                        </p>
+                        {staff.isManager && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-0.5 bg-violet-500/10 text-violet-400 border-violet-500/30">
+                            <Network className="h-2.5 w-2.5" />
+                            Manager
+                          </Badge>
+                        )}
+                      </div>
                       {staff.description && (
                         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
                           {staff.description}
