@@ -20,6 +20,10 @@ import {
   Users,
   ArrowRight,
   RotateCcw,
+  Copy,
+  Check,
+  Search,
+  Timer,
 } from "lucide-react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
@@ -181,6 +185,8 @@ export default function DelegationsPage() {
   const [selectedDelegation, setSelectedDelegation] = useState<Delegation | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [copied, setCopied] = useState(false);
 
   // ── Data Fetching ───────────────────────────────────────────────────────
 
@@ -207,10 +213,13 @@ export default function DelegationsPage() {
   const staff = staffData || [];
   const managers = staff.filter((s) => s.isManager && s.status === "ACTIVE");
 
-  const filteredDelegations =
-    activeFilter === "ALL"
-      ? delegations
-      : delegations.filter((d) => d.status === activeFilter);
+  const filteredDelegations = delegations
+    .filter((d) => activeFilter === "ALL" || d.status === activeFilter)
+    .filter((d) =>
+      searchQuery === "" ||
+      d.goal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.manager.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   // ── Form ────────────────────────────────────────────────────────────────
 
@@ -257,6 +266,19 @@ export default function DelegationsPage() {
     },
   });
 
+  const cloneMutation = useMutation({
+    mutationFn: (delegation: Delegation) =>
+      apiPost(`/api/workspaces/${wsId}/delegations`, {
+        managerId: delegation.manager.id,
+        goal: delegation.goal,
+        context: delegation.context || undefined,
+        autoExecute: true,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["delegations", wsId] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (delegationId: string) =>
       apiDelete(`/api/workspaces/${wsId}/delegations/${delegationId}`),
@@ -278,6 +300,23 @@ export default function DelegationsPage() {
   });
 
   // ── Handlers ────────────────────────────────────────────────────────────
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function formatDuration(startStr: string | null, endStr: string | null): string {
+    if (!startStr || !endStr) return "";
+    const ms = new Date(endStr).getTime() - new Date(startStr).getTime();
+    if (ms < 1000) return `${ms}ms`;
+    const secs = Math.floor(ms / 1000);
+    if (secs < 60) return `${secs}s`;
+    const mins = Math.floor(secs / 60);
+    const remSecs = secs % 60;
+    return `${mins}m ${remSecs}s`;
+  }
 
   function onSubmit(data: CreateDelegationForm) {
     createMutation.mutate(data);
@@ -413,21 +452,32 @@ export default function DelegationsPage() {
         </Dialog>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-1 rounded-lg bg-card border border-border p-1 w-fit">
-        {filters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setActiveFilter(f.key)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeFilter === f.key
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* Filter Tabs + Search */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="flex gap-1 rounded-lg bg-card border border-border p-1 w-fit">
+          {filters.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setActiveFilter(f.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                activeFilter === f.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search goals or managers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
       </div>
 
       {/* Delegation List */}
@@ -569,6 +619,20 @@ export default function DelegationsPage() {
                         </Button>
                       )}
 
+                      {delegation.status === "COMPLETED" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => cloneMutation.mutate(delegation)}
+                          disabled={cloneMutation.isPending}
+                          className="gap-1"
+                          title="Clone & re-run with same goal"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          Clone
+                        </Button>
+                      )}
+
                       {(delegation.status === "COMPLETED" ||
                         delegation.status === "FAILED") && (
                         <Button
@@ -650,6 +714,12 @@ export default function DelegationsPage() {
                       {delegationDetail.totalTokensUsed.toLocaleString()} tokens
                     </span>
                   )}
+                  {delegationDetail.startedAt && delegationDetail.finishedAt && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Timer className="h-3 w-3" />
+                      {formatDuration(delegationDetail.startedAt, delegationDetail.finishedAt)}
+                    </span>
+                  )}
                 </div>
                 <DialogTitle className="text-left mt-2">
                   {delegationDetail.goal}
@@ -699,10 +769,24 @@ export default function DelegationsPage() {
               {/* Final Output */}
               {delegationDetail.finalOutput && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    Final Deliverable
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      Final Deliverable
+                    </h3>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1 h-7 text-xs"
+                      onClick={() => copyToClipboard(delegationDetail.finalOutput!)}
+                    >
+                      {copied ? (
+                        <><Check className="h-3 w-3 text-emerald-400" /> Copied</>
+                      ) : (
+                        <><Copy className="h-3 w-3" /> Copy</>
+                      )}
+                    </Button>
+                  </div>
                   <div className="rounded-md bg-emerald-500/5 border border-emerald-500/20 p-4">
                     <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed">
                       {delegationDetail.finalOutput}
