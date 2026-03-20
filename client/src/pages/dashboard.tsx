@@ -23,7 +23,9 @@ import {
   BarChart3,
   Network,
   Target,
+  Rocket,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -381,6 +383,64 @@ export default function DashboardPage() {
           </button>
         </Link>
       </div>
+
+      {/* ─── 1.5 Getting Started (shows when workspace is new) ──── */}
+      {!isLoading && staffList.length < 3 && (
+        <div className="rounded-xl border border-purple-500/20 bg-gradient-to-r from-purple-500/5 to-blue-500/5 p-5">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+            <Rocket className="h-4 w-4 text-purple-400" />
+            Getting Started
+          </h3>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              {
+                done: staffList.length > 0,
+                label: "Create AI Staff",
+                desc: "Add your first AI team members",
+                href: "/ai-staff/create",
+              },
+              {
+                done: staffList.some((s: any) => s.isManager),
+                label: "Enable a Manager",
+                desc: "Mark a staff member as a manager agent",
+                href: "/ai-staff",
+              },
+              {
+                done: (overview?.delegations?.total ?? 0) > 0,
+                label: "Run a Delegation",
+                desc: "Give your manager a goal to accomplish",
+                href: "/delegations",
+              },
+            ].map((step) => (
+              <Link key={step.label} href={step.href}>
+                <div
+                  className={cn(
+                    "flex items-start gap-3 rounded-lg border p-3 transition-all cursor-pointer",
+                    step.done
+                      ? "border-emerald-500/30 bg-emerald-500/5 opacity-60"
+                      : "border-white/10 bg-white/[0.02] hover:border-purple-500/30 hover:bg-purple-500/5"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
+                      step.done ? "bg-emerald-500" : "border-2 border-white/20"
+                    )}
+                  >
+                    {step.done && <CheckCircle2 className="h-3 w-3 text-white" />}
+                  </div>
+                  <div>
+                    <p className={cn("text-sm font-medium", step.done ? "text-white/50 line-through" : "text-white/80")}>
+                      {step.label}
+                    </p>
+                    <p className="text-xs text-white/30">{step.desc}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ─── 2. Stats Row ───────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
