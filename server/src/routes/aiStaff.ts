@@ -37,6 +37,7 @@ const createAIStaffSchema = z.object({
   description: z.string().optional(),
   avatarImageUrl: z.string().url().optional().or(z.literal("")),
   modelConfig: z.record(z.unknown()).optional(),
+  isManager: z.boolean().optional(),
 });
 
 const updateAIStaffSchema = z.object({
@@ -46,6 +47,7 @@ const updateAIStaffSchema = z.object({
   avatarImageUrl: z.string().url().optional().or(z.literal("")),
   modelConfig: z.record(z.unknown()).optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "TRAINING"]).optional(),
+  isManager: z.boolean().optional(),
 });
 
 const createFromTemplateSchema = z.object({
@@ -88,7 +90,7 @@ aiStaffRouter.post("/", async (req: Request, res: Response) => {
       return;
     }
 
-    const { name, roleType, description, avatarImageUrl, modelConfig } =
+    const { name, roleType, description, avatarImageUrl, modelConfig, isManager } =
       parsed.data;
 
     // Verify workspace exists
@@ -108,6 +110,7 @@ aiStaffRouter.post("/", async (req: Request, res: Response) => {
         description,
         avatarImageUrl: avatarImageUrl || null,
         modelConfig: (modelConfig || {}) as Prisma.InputJsonValue,
+        isManager: isManager || false,
       },
     });
 
@@ -245,6 +248,8 @@ aiStaffRouter.put("/:staffId", async (req: Request, res: Response) => {
       updateData.modelConfig = parsed.data.modelConfig;
     if (parsed.data.status !== undefined)
       updateData.status = parsed.data.status;
+    if (parsed.data.isManager !== undefined)
+      updateData.isManager = parsed.data.isManager;
 
     const staff = await prisma.aIStaff.update({
       where: { id: staffId },

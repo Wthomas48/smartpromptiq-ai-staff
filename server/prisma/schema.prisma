@@ -92,6 +92,22 @@ enum AuditActorType {
   SYSTEM
 }
 
+enum DelegationStatus {
+  PLANNING
+  EXECUTING
+  REVIEWING
+  COMPLETED
+  FAILED
+}
+
+enum SubtaskStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model User {
@@ -107,6 +123,7 @@ model User {
   ownedWorkspaces Workspace[]
   memberships     WorkspaceMember[]
   messageThreads  MessageThread[]
+  delegations     Delegation[]
 }
 
 model Workspace {
@@ -132,6 +149,7 @@ model Workspace {
   auditLogs        AuditLog[]
   apiKeys          APIKey[]
   usageLogs        UsageLog[]
+  delegations      Delegation[]
 }
 
 model WorkspaceMember {
@@ -165,14 +183,17 @@ model AIStaff {
   maxTokens      Int                @default(2048)
   modelConfig    Json               @default("{}")
   tools          Json               @default("[]")
+  isManager      Boolean            @default(false)
   status         AIStaffStatus      @default(ACTIVE)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
-  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workflows      Workflow[]
-  tasks          Task[]
-  messageThreads MessageThread[]
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workflows           Workflow[]
+  tasks               Task[]
+  messageThreads      MessageThread[]
+  managedDelegations  Delegation[]         @relation("ManagedDelegations")
+  assignedSubtasks    DelegationSubtask[]  @relation("AssignedSubtasks")
 }
 
 model AIStaffRoleTemplate {
@@ -342,4 +363,50 @@ model APIKey {
   lastUsedAt DateTime?
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+// ─── Delegation System ────────────────────────────────────────────────────────
+
+model Delegation {
+  id              String           @id @default(uuid())
+  workspaceId     String
+  managerId       String
+  createdByUserId String
+  goal            String
+  context         String?
+  plan            Json             @default("[]")
+  finalOutput     String?
+  status          DelegationStatus @default(PLANNING)
+  totalTokensUsed Int              @default(0)
+  totalCostUsd    Float            @default(0)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  manager   AIStaff            @relation("ManagedDelegations", fields: [managerId], references: [id], onDelete: Cascade)
+  createdBy User               @relation(fields: [createdByUserId], references: [id])
+  subtasks  DelegationSubtask[]
+}
+
+model DelegationSubtask {
+  id           String        @id @default(uuid())
+  delegationId String
+  assigneeId   String?
+  orderIndex   Int           @default(0)
+  title        String
+  instructions String
+  dependsOn    Json          @default("[]")
+  output       String?
+  status       SubtaskStatus @default(PENDING)
+  tokensUsed   Int           @default(0)
+  costUsd      Float         @default(0)
+  durationMs   Int           @default(0)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime      @default(now())
+
+  delegation Delegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  assignee   AIStaff?   @relation("AssignedSubtasks", fields: [assigneeId], references: [id], onDelete: SetNull)
 }
