@@ -16,6 +16,7 @@ import SettingsPage from "@/pages/settings";
 import OnboardingPage from "@/pages/onboarding";
 import CreateStaffPage from "@/pages/create-staff";
 import LandingPage from "@/pages/landing";
+import DelegationsPage from "@/pages/delegations";
 import NotFoundPage from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -148,6 +149,12 @@ function AppRoutes() {
       <Route path="/workflows">
         <ProtectedRoute>
           <WorkflowsPage />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/delegations">
+        <ProtectedRoute>
+          <DelegationsPage />
         </ProtectedRoute>
       </Route>
 
