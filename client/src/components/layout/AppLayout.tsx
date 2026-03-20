@@ -10,6 +10,7 @@ import {
   CheckSquare,
   ScrollText,
   FileCode,
+  BookOpen,
   MessageSquare,
   Plug,
   Settings,
@@ -23,8 +24,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Sun, Moon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -33,6 +36,7 @@ const navItems = [
   { path: "/delegations", label: "Delegations", icon: Network },
   { path: "/tasks", label: "Tasks", icon: CheckSquare },
   { path: "/messages", label: "Messages", icon: MessageSquare },
+  { path: "/knowledge", label: "Knowledge", icon: BookOpen },
   { path: "/integrations", label: "Integrations", icon: Plug },
   { path: "/api-docs", label: "API Docs", icon: FileCode },
   { path: "/audit-logs", label: "Audit Logs", icon: ScrollText },
@@ -43,6 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { workspaces, currentWorkspace, setCurrentWorkspace } = useWorkspace();
+  const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
 
@@ -133,7 +138,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="border-t border-border p-4">
+        <div className="border-t border-border p-4 space-y-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="text-xs bg-primary/20 text-primary">
@@ -148,6 +153,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {user?.email}
               </p>
             </div>
+            <button
+              onClick={toggleTheme}
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
           </div>
         </div>
       </aside>

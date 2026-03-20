@@ -260,6 +260,31 @@ export async function planDelegation(
     where: { id: workspaceId },
   });
 
+  // Search knowledge base for relevant context
+  const goalKeywords = delegation.goal.split(/\s+/).filter((w) => w.length > 3).slice(0, 5);
+  let knowledgeContext = "";
+  if (goalKeywords.length > 0) {
+    try {
+      const knowledgeEntries = await prisma.knowledgeEntry.findMany({
+        where: {
+          workspaceId,
+          OR: goalKeywords.flatMap((kw) => [
+            { title: { contains: kw, mode: "insensitive" as const } },
+            { content: { contains: kw, mode: "insensitive" as const } },
+          ]),
+        },
+        take: 3,
+        orderBy: { updatedAt: "desc" },
+      });
+      if (knowledgeEntries.length > 0) {
+        knowledgeContext = "\n\nRelevant knowledge from the workspace:\n" +
+          knowledgeEntries.map((e) => `### ${e.title}\n${e.content.slice(0, 500)}`).join("\n\n");
+      }
+    } catch {
+      // Non-fatal: knowledge search failed
+    }
+  }
+
   // Build the planning prompt
   const specialistList = specialists
     .map((s) => `- ${s.name} (ID: ${s.id}, Role: ${s.roleType}): ${s.description || "No description"}`)
@@ -268,7 +293,7 @@ export async function planDelegation(
   const planningPrompt = `You are ${manager.name}, a ${manager.roleType} managing a team of AI specialists.
 
 Your goal: ${delegation.goal}
-${delegation.context ? `Additional context: ${delegation.context}` : ""}
+${delegation.context ? `Additional context: ${delegation.context}` : ""}${knowledgeContext}
 
 Available team members:
 ${specialistList || "No specialists available — you will handle all subtasks yourself."}

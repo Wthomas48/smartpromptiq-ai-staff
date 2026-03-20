@@ -1,5 +1,6 @@
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
@@ -20,6 +21,7 @@ import LandingPage from "@/pages/landing";
 import DelegationsPage from "@/pages/delegations";
 import AuditLogsPage from "@/pages/audit-logs";
 import APIDocsPage from "@/pages/api-docs";
+import KnowledgePage from "@/pages/knowledge";
 import NotFoundPage from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -179,6 +181,12 @@ function AppRoutes() {
         </ProtectedRoute>
       </Route>
 
+      <Route path="/knowledge">
+        <ProtectedRoute>
+          <KnowledgePage />
+        </ProtectedRoute>
+      </Route>
+
       <Route path="/api-docs">
         <ProtectedRoute>
           <APIDocsPage />
@@ -207,12 +215,14 @@ function AppRoutes() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <WorkspaceProvider>
-          <AppRoutes />
-          <Toaster />
-        </WorkspaceProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <WorkspaceProvider>
+            <AppRoutes />
+            <Toaster />
+          </WorkspaceProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

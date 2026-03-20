@@ -32,6 +32,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Light Theme Override ──────────────────────────────────────── */
+
+html.light {
+  --color-background: #fafafa;
+  --color-foreground: #0a0a0b;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0b;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0a0a0b;
+  --color-primary: #6d5cff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f0f0f3;
+  --color-secondary-foreground: #0a0a0b;
+  --color-muted: #f0f0f3;
+  --color-muted-foreground: #6b6b76;
+  --color-accent: #f0f0f3;
+  --color-accent-foreground: #0a0a0b;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-ring: #6d5cff;
+}
+
 /* ─── Premium Animations ──────────────────────────────────────────── */
 
 @keyframes fadeIn {
