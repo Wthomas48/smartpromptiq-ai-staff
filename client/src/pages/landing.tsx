@@ -614,6 +614,82 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ═══ Delegation Feature ═══ */}
+      <section className="border-t border-border/30">
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-sm text-violet-300 mb-4">
+              <Zap className="h-4 w-4" />
+              Manager Agent Delegation
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+              One Goal. Your AI Team{" "}
+              <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+                Handles Everything.
+              </span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Assign a high-level goal to a Manager Agent. They decompose it into subtasks,
+              delegate to specialists, and synthesize a final deliverable — all automatically.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            {[
+              {
+                step: "Goal",
+                title: "You set the goal",
+                desc: '"Prepare a quarterly marketing report with competitor analysis"',
+                color: "from-blue-500/20 to-blue-600/20",
+                border: "border-blue-500/30",
+              },
+              {
+                step: "Plan",
+                title: "Manager decomposes",
+                desc: "Breaks goal into subtasks: research, analyze, write, review",
+                color: "from-violet-500/20 to-purple-600/20",
+                border: "border-violet-500/30",
+              },
+              {
+                step: "Execute",
+                title: "Team works in parallel",
+                desc: "Each specialist completes their subtask using their expertise",
+                color: "from-emerald-500/20 to-green-600/20",
+                border: "border-emerald-500/30",
+              },
+              {
+                step: "Deliver",
+                title: "Manager synthesizes",
+                desc: "Reviews all outputs, combines into a polished final deliverable",
+                color: "from-amber-500/20 to-orange-600/20",
+                border: "border-amber-500/30",
+              },
+            ].map((item) => (
+              <div
+                key={item.step}
+                className={`rounded-xl border ${item.border} bg-gradient-to-b ${item.color} p-5 text-center`}
+              >
+                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                  {item.step}
+                </div>
+                <h3 className="font-semibold text-foreground text-sm mb-2">{item.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-10">
+            <Button
+              onClick={() => navigate("/register")}
+              className="h-12 px-8 text-base font-bold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 border-0 shadow-lg shadow-violet-500/25 rounded-xl"
+            >
+              Try Manager Delegation
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* ═══ Pricing Teaser ═══ */}
       <section className="border-t border-border/30">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
