@@ -58,4 +58,4 @@ ENV NODE_ENV=production
 ENV UPLOAD_DIR=/app/uploads
 
 # Push schema to DB then start server
-CMD ["sh", "-c", "echo \"DATABASE_URL set: ${DATABASE_URL:+yes}${DATABASE_URL:-no}\" && npx prisma db push --skip-generate && node dist/index.js"]
+CMD ["sh", "-c", "echo \"DATABASE_URL set: ${DATABASE_URL:+yes}${DATABASE_URL:-no}\" && npx prisma generate && npx prisma db push --skip-generate && node dist/index.js"]
