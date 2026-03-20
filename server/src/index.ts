@@ -58,6 +58,16 @@ const apiLimiter = rateLimit({
 });
 app.use("/api/", apiLimiter);
 
+// Stricter rate limit for AI/delegation endpoints (10 per minute per IP)
+const aiLimiter = rateLimit({
+  windowMs: 60000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "AI request rate limit exceeded. Please wait before creating more delegations." },
+});
+app.use("/api/webhooks/trigger", aiLimiter);
+
 // Stripe webhook must be mounted BEFORE express.json() to receive raw body
 app.use("/api/billing", webhookRouter);
 
